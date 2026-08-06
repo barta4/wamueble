@@ -1,0 +1,9 @@
+{
+    "ignore": [
+        "auth_info_baileys/*",
+        "data/*",
+        "logs/*",
+        "*.db",
+        "*.sqlite"
+    ]
+}

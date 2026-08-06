@@ -1,0 +1,23 @@
+# Dependencias
+node_modules/
+
+# Base de datos y sesiones
+data/*.db
+auth_info_baileys/
+
+# Variables de entorno
+.env
+.env.*
+*.local
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+

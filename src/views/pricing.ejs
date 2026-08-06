@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/landing.css">
+</head>
+<body class="landing-body">
+    <nav class="landing-nav">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <img src="/images/logo.png" alt="UruBot" class="logo-img">
+            </div>
+            <div class="nav-links">
+                <% if (user) { %>
+                    <a href="/dashboard" class="nav-btn-login">Dashboard</a>
+                <% } else { %>
+                    <a href="/login" class="nav-btn-login">Iniciar Sesión</a>
+                    <a href="/register" class="nav-btn-register">Empezar Gratis</a>
+                <% } %>
+            </div>
+        </div>
+    </nav>
+
+    <section class="pricing-section" style="padding-top: 120px;">
+        <div class="section-container">
+            <h2 class="section-title">Elegí el plan perfecto para tu negocio</h2>
+            <p class="section-subtitle">Empezá gratis y escala cuando lo necesités</p>
+            
+            <div class="pricing-grid">
+                <div class="pricing-card">
+                    <div class="pricing-header">
+                        <h3>Gratis</h3>
+                        <div class="price">$0<span>/mes</span></div>
+                        <p>Para probar el sistema</p>
+                    </div>
+                    <ul class="pricing-features">
+                        <li>100 pedidos/mes</li>
+                        <li>20 productos</li>
+                        <li>1 repartidor</li>
+                        <li>1 número WhatsApp</li>
+                        <li>Soporte IA básico</li>
+                        <li>Dashboard de cocina</li>
+                    </ul>
+                    <a href="/register?plan=free" class="btn-secondary btn-full">Empezar Gratis</a>
+                </div>
+                
+                <div class="pricing-card pricing-featured">
+                    <div class="pricing-badge">Más Popular</div>
+                    <div class="pricing-header">
+                        <h3>Pro</h3>
+                        <div class="price">$29<span>/mes</span></div>
+                        <p>Para negocios en crecimiento</p>
+                    </div>
+                    <ul class="pricing-features">
+                        <li>Pedidos ilimitados</li>
+                        <li>500 productos</li>
+                        <li>10 repartidores</li>
+                        <li>1 número WhatsApp</li>
+                        <li>Soporte IA premium</li>
+                        <li>Conexión BD externa</li>
+                        <li>Reportes avanzados</li>
+                    </ul>
+                    <a href="/register?plan=pro" class="btn-primary btn-full">Empezar con Pro</a>
+                </div>
+                
+                <div class="pricing-card">
+                    <div class="pricing-header">
+                        <h3>Enterprise</h3>
+                        <div class="price">$99<span>/mes</span></div>
+                        <p>Para grandes operaciones</p>
+                    </div>
+                    <ul class="pricing-features">
+                        <li>Todo de Pro incluido</li>
+                        <li>Productos ilimitados</li>
+                        <li>Repartidores ilimitados</li>
+                        <li>3 números WhatsApp</li>
+                        <li>Multi-sucursal</li>
+                        <li>API access</li>
+                        <li>Soporte prioritario</li>
+                        <li>Branding personalizado</li>
+                    </ul>
+                    <a href="/register?plan=enterprise" class="btn-secondary btn-full">Contactar Ventas</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="faq-section" id="faq">
+        <div class="section-container">
+            <h2 class="section-title">Preguntas sobre Precios</h2>
+            
+            <div class="faq-grid">
+                <div class="faq-item">
+                    <h3>¿Puedo cambiar de plan después?</h3>
+                    <p>Sí. Podés actualizar o reducir tu plan en cualquier momento desde tu panel de administración.</p>
+                </div>
+                <div class="faq-item">
+                    <h3>¿Hay costos ocultos?</h3>
+                    <p>No. El precio que ves es el precio que pagás. Sin configuración, sin costos adicionales.</p>
+                </div>
+                <div class="faq-item">
+                    <h3>¿Qué pasa si supero mi límite?</h3>
+                    <p>Tu sistema sigue funcionando. Te notificamos que alcanzaste el límite y te sugerimos actualizar.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+</body>
+</html>

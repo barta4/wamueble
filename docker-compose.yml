@@ -1,0 +1,85 @@
+version: '3.8'
+
+services:
+  # ─── Base de Datos PostgreSQL ─────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: wapitzz-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-urubot}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-urubot_secret_2026}
+      POSTGRES_DB: ${POSTGRES_DB:-urubot_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-urubot} -d ${POSTGRES_DB:-urubot_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - dokploy-network
+
+  # ─── Aplicación UruBot (Node.js) ──────────────────────
+  app:
+    build: .
+    image: alfredobartaburu/urubot:v2.0
+    container_name: wapitzz-app
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - PORT=3000
+      - NODE_ENV=production
+      - USE_POSTGRES=true
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=${POSTGRES_USER:-urubot}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-urubot_secret_2026}
+      - POSTGRES_DB=${POSTGRES_DB:-urubot_db}
+      - DATABASE_URL=postgres://${POSTGRES_USER:-urubot}:${POSTGRES_PASSWORD:-urubot_secret_2026}@db:5432/${POSTGRES_DB:-urubot_db}
+      - DB_PATH=/app/data/wapitzz.db
+      - AI_PROVIDER=${AI_PROVIDER:-openai}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.0-flash}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - ANTHROPIC_MODEL=${ANTHROPIC_MODEL:-claude-sonnet-4-20250514}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
+      - SESSION_SECRET=${SESSION_SECRET:-wabot_secret_production_key}
+      - GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY}
+      - STORE_NAME=${STORE_NAME}
+      - STORE_PHONE=${STORE_PHONE}
+      - STORE_ADDRESS=${STORE_ADDRESS}
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - SMTP_FROM_NAME=${SMTP_FROM_NAME:-WaBot Avisos}
+      - SMTP_FROM_EMAIL=${SMTP_FROM_EMAIL:-no-reply@wabot.app}
+    volumes:
+      - wapitzz_db:/app/data
+      - wapitzz_auth:/app/auth_info_baileys
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.wapitzz.rule=Host(`wapitzz.urufile.duckdns.org`)"
+      - "traefik.http.routers.wapitzz.entrypoints=websecure"
+      - "traefik.http.routers.wapitzz.tls=true"
+      - "traefik.http.routers.wapitzz.tls.certresolver=letsencrypt"
+      - "traefik.http.services.wapitzz.loadbalancer.server.port=3000"
+    networks:
+      - dokploy-network
+
+volumes:
+  postgres_data:
+  wapitzz_db:
+  wapitzz_auth:
+
+networks:
+  dokploy-network:
+    external: true
+    name: dokploy-network

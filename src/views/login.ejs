@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .login-body {
+            background: var(--bg-gradient-admin);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .login-container {
+            width: 100%;
+            max-width: 440px;
+            padding: 20px;
+        }
+        .login-card {
+            background: rgba(255, 255, 255, 0.45);
+            backdrop-filter: blur(18px) saturate(160%);
+            -webkit-backdrop-filter: blur(18px) saturate(160%);
+            border: 1px solid rgba(255, 255, 255, 0.55);
+            border-radius: var(--radius-xl);
+            padding: 48px;
+            box-shadow: 0 8px 32px rgba(60, 130, 190, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+            position: relative;
+            overflow: hidden;
+        }
+        .login-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #bfe3fb, #3d9be0);
+        }
+        .login-logo {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        .logo-img-lg {
+            width: 80px;
+            height: auto;
+            border-radius: var(--radius-md);
+            box-shadow: 0 8px 16px rgba(60, 130, 190, 0.15);
+        }
+        .login-title {
+            text-align: center;
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+            letter-spacing: -0.03em;
+        }
+        .login-subtitle {
+            text-align: center;
+            color: var(--text-secondary);
+            margin-bottom: 32px;
+        }
+        .form-group {
+            margin-bottom: 24px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 14px 16px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+            background: var(--bg-input);
+            color: var(--text-primary);
+            font-family: var(--font-ui);
+            font-size: 1rem;
+            transition: var(--transition);
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px var(--accent-primary-glow);
+        }
+        .login-error {
+            background: rgba(224, 93, 93, 0.08);
+            border: 1px solid rgba(224, 93, 93, 0.2);
+            color: #c0392b;
+            padding: 14px;
+            border-radius: var(--radius-sm);
+            margin-bottom: 24px;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+        .btn-primary {
+            width: 100%;
+            padding: 16px;
+            font-size: 1.05rem;
+            font-weight: 600;
+            border-radius: var(--radius-pill);
+            background: linear-gradient(135deg, #7cc4f2, #3d9be0);
+            color: white;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(61, 155, 224, 0.3);
+            transition: var(--transition);
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(61, 155, 224, 0.45);
+        }
+        .register-link {
+            text-align: center;
+            margin-top: 32px;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+        .register-link a {
+            color: var(--accent-primary);
+            text-decoration: none;
+            font-weight: 600;
+            transition: var(--transition);
+        }
+        .register-link a:hover {
+            color: #7cc4f2;
+        }
+        .back-link {
+            text-align: center;
+            margin-top: 24px;
+        }
+        .back-link a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: var(--transition);
+        }
+        .back-link a:hover {
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body class="login-body">
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-logo"><img src="/images/logo.png" alt="WaBot" class="logo-img-lg" onerror="this.style.display='none'"></div>
+            <h1 class="login-title">Iniciar Sesión</h1>
+            <p class="login-subtitle">Accedé a tu panel de administración</p>
+
+            <% if (error) { %>
+                <div class="login-error">
+                    <%= error %>
+                </div>
+            <% } %>
+
+            <form action="/login" method="POST">
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" placeholder="tu@negocio.com" required autofocus>
+                </div>
+                <div class="form-group">
+                    <label for="password">Contraseña</label>
+                    <input type="password" id="password" name="password" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="btn-primary">Ingresar a mi cuenta</button>
+            </form>
+
+            <div class="register-link">
+                ¿No tenés cuenta? <a href="/register">Crear Cuenta Gratis</a>
+            </div>
+            <div class="back-link">
+                <a href="/">← Volver al inicio</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

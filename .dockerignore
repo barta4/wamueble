@@ -1,0 +1,11 @@
+node_modules
+data/
+auth_info_baileys/
+.env
+.env.local
+.git
+.github
+*.log
+npm-debug.log*
+.idea
+.vscode

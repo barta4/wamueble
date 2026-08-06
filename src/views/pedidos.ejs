@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title><%= title %></title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="kitchen-body">
+    <!-- Header -->
+    <header class="kitchen-header">
+        <div class="header-left">
+            <img src="/images/logo.png" alt="UruBot" class="logo-img-sm">
+            <h1 class="store-name"><%= store ? store.name : 'UruBot' %></h1>
+        </div>
+        <div class="header-right">
+            <div class="connection-status" id="connectionStatus">
+                <span class="status-dot"></span>
+                <span class="status-text">Conectando...</span>
+            </div>
+            <div class="clock" id="clock"></div>
+        </div>
+    </header>
+
+    <!-- Cola de pedidos -->
+    <main class="kitchen-main">
+        <div class="kitchen-tabs">
+            <button class="k-tab-btn active" id="tab-btn-pedidos" onclick="switchPedidosTab('pedidos')">
+                🍳 En Cocina (<span id="pendingCount"><%= orders.length %></span>)
+            </button>
+            <button class="k-tab-btn" id="tab-btn-ready" onclick="switchPedidosTab('ready')">
+                🛵 En Camino (<span id="readyCount"><%= readyOrders.length %></span>)
+            </button>
+        </div>
+
+        <div class="orders-grid" id="ordersGrid">
+            <% if (orders.length === 0) { %>
+                <div class="empty-state" id="emptyState">
+                    <div class="empty-icon">📦</div>
+                    <p>Sin pedidos pendientes</p>
+                    <span>Los nuevos pedidos aparecerán aquí automáticamente</span>
+                </div>
+            <% } %>
+
+            <% orders.forEach(function(order) { %>
+                <div class="order-card" data-order-id="<%= order.id %>" id="order-<%= order.id %>">
+                    <div class="order-header-card">
+                        <span class="order-number">#<%= order.order_number %></span>
+                        <span class="order-time" data-created="<%= order.created_at %>">
+                            <%= new Date(order.created_at).toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit' }) %>
+                        </span>
+                    </div>
+
+                    <div class="order-items">
+                        <% order.items.forEach(function(item) { %>
+                            <div class="order-item">
+                                <span class="item-qty"><%= item.quantity %>x</span>
+                                <span class="item-name"><%= item.product_name %></span>
+                                <% if (item.details) { %>
+                                    <span class="item-details">(<%= item.details %>)</span>
+                                <% } %>
+                            </div>
+                        <% }); %>
+                    </div>
+
+                    <% if (order.notes) { %>
+                        <div class="order-notes-tag">
+                            📝 <strong>Nota:</strong> <%= order.notes %>
+                        </div>
+                    <% } %>
+
+                    <% if (order.media_urls) { 
+                        let mediaUrls = [];
+                        try { mediaUrls = JSON.parse(order.media_urls); } catch(e) {}
+                        if (mediaUrls.length > 0) { %>
+                        <div class="order-media" style="display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0;">
+                            <% mediaUrls.forEach(function(url) { %>
+                                <a href="<%= url %>" target="_blank" style="display: block;">
+                                    <img src="<%= url %>" alt="Adjunto" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 2px solid var(--border-color);">
+                                </a>
+                            <% }); %>
+                        </div>
+                    <% } } %>
+
+                    <div class="order-address">
+                        📍 <%= order.address %>
+                    </div>
+
+                    <div class="order-payment">
+                        💰 <%= order.payment_method %> — $<%= order.total %>
+                    </div>
+
+                    <div class="order-driver">
+                        <label>🛵 Repartidor:</label>
+                        <select class="driver-select" id="driver-<%= order.id %>">
+                            <option value="">— Seleccionar —</option>
+                            <% drivers.forEach(function(driver) { %>
+                                <option value="<%= driver.id %>"><%= driver.name %> (<%= driver.phone %>)</option>
+                            <% }); %>
+                        </select>
+                    </div>
+
+                    <div class="order-actions">
+                        <button class="btn-ready" onclick="markReady('<%= order.id %>')">
+                            🟢 PEDIDO LISTO
+                        </button>
+                        <button class="btn-print" onclick="printTicket('<%= order.id %>')" title="Imprimir Ticket">
+                            🖨️
+                        </button>
+                        <button class="btn-cancel" onclick="cancelOrder('<%= order.id %>')" title="Cancelar Pedido">
+                            ✕
+                        </button>
+                    </div>
+
+                    <div class="order-timer" data-created="<%= order.created_at %>">
+                        ⏱ <span class="timer-value">0:00</span>
+                    </div>
+                </div>
+            <% }); %>
+        </div>
+
+        <!-- Grid En Camino (Listo/Ready) -->
+        <div class="orders-grid" id="readyGrid" style="display: none;">
+            <% if (readyOrders.length === 0) { %>
+                <div class="empty-state" id="emptyReadyState">
+                    <div class="empty-icon">🛵</div>
+                    <p>No hay pedidos en camino</p>
+                    <span>Los pedidos listos para despachar aparecerán aquí</span>
+                </div>
+            <% } %>
+
+            <% readyOrders.forEach(function(order) { %>
+                <div class="order-card ready-status" id="order-<%= order.id %>" data-order-id="<%= order.id %>">
+                    <div class="order-header-card">
+                        <span class="order-number">#<%= order.order_number %></span>
+                        <span class="order-time">
+                            <%= new Date(order.created_at).toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit' }) %>
+                        </span>
+                    </div>
+                    <div class="order-items">
+                        <% order.items.forEach(function(item) { %>
+                            <div class="order-item">
+                                <span class="item-qty"><%= item.quantity %>x</span>
+                                <span class="item-name"><%= item.product_name %></span>
+                                <% if (item.details) { %>
+                                    <span class="item-details">(<%= item.details %>)</span>
+                                <% } %>
+                            </div>
+                        <% }); %>
+                    </div>
+                    <% if (order.notes) { %>
+                        <div class="order-notes-tag">
+                            📝 <strong>Nota:</strong> <%= order.notes %>
+                        </div>
+                    <% } %>
+                    <div class="order-address">📍 <%= order.address %></div>
+                    <div class="order-payment">💰 <%= order.payment_method %> — $<%= order.total %></div>
+                    <div class="order-actions">
+                        <button class="btn-ready btn-deliver" onclick="markDelivered('<%= order.id %>')">
+                            ✓ ENTREGADO
+                        </button>
+                        <button class="btn-print" onclick="printTicket('<%= order.id %>')" title="Imprimir Ticket">
+                            🖨️
+                        </button>
+                    </div>
+                    <div class="order-timer" data-created="<%= order.created_at %>">
+                        ⏱ <span class="timer-value">0:00</span>
+                    </div>
+                </div>
+            <% }); %>
+        </div>
+    </main>
+
+    <!-- Audio de alerta -->
+    <audio id="alertSound" preload="auto">
+        <source src="/sounds/alert.mp3" type="audio/mpeg">
+    </audio>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script id="drivers-data" type="application/json">
+        <%- JSON.stringify(drivers) %>
+    </script>
+    <script>
+        // Drivers disponibles (inyectados desde el servidor)
+        const DRIVERS = JSON.parse(document.getElementById('drivers-data').textContent);
+        window.STORE_ID = Number('<%= store ? store.id : 0 %>');
+    </script>
+    <script src="/js/pedidos.js"></script>
+</body>
+</html>

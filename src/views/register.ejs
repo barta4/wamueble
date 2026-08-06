@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .register-body {
+            background: var(--bg-gradient-admin);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .register-container {
+            width: 100%;
+            max-width: 540px;
+        }
+        .register-card {
+            background: rgba(255, 255, 255, 0.45);
+            backdrop-filter: blur(18px) saturate(160%);
+            -webkit-backdrop-filter: blur(18px) saturate(160%);
+            border: 1px solid rgba(255, 255, 255, 0.55);
+            border-radius: var(--radius-xl);
+            padding: 40px 48px;
+            box-shadow: 0 8px 32px rgba(60, 130, 190, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+            position: relative;
+            overflow: hidden;
+        }
+        .register-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #bfe3fb, #3d9be0);
+        }
+        .register-logo {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        .logo-img-lg {
+            width: 70px;
+            height: auto;
+            border-radius: var(--radius-md);
+            box-shadow: 0 8px 16px rgba(60, 130, 190, 0.15);
+        }
+        .register-title {
+            text-align: center;
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+            letter-spacing: -0.03em;
+        }
+        .register-subtitle {
+            text-align: center;
+            color: var(--text-secondary);
+            margin-bottom: 32px;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+            background: var(--bg-input);
+            color: var(--text-primary);
+            font-family: var(--font-ui);
+            font-size: 0.95rem;
+            transition: var(--transition);
+        }
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px var(--accent-primary-glow);
+        }
+        .form-group select option {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+        .btn-primary {
+            width: 100%;
+            padding: 16px;
+            font-size: 1.05rem;
+            font-weight: 600;
+            border-radius: var(--radius-pill);
+            background: linear-gradient(135deg, #7cc4f2, #3d9be0);
+            color: white;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(61, 155, 224, 0.3);
+            transition: var(--transition);
+            margin-top: 8px;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(61, 155, 224, 0.45);
+        }
+        .login-link {
+            text-align: center;
+            margin-top: 32px;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+        .login-link a {
+            color: var(--accent-primary);
+            text-decoration: none;
+            font-weight: 600;
+            transition: var(--transition);
+        }
+        .login-link a:hover {
+            color: #7cc4f2;
+        }
+        .mode-selector-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .mode-card {
+            position: relative;
+            cursor: pointer;
+        }
+        .mode-card input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .mode-card-inner {
+            background: rgba(255, 255, 255, 0.6);
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 14px 10px;
+            text-align: center;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+        .mode-card input[type="radio"]:checked + .mode-card-inner {
+            border-color: #3d9be0;
+            background: rgba(61, 155, 224, 0.12);
+            box-shadow: 0 4px 12px rgba(61, 155, 224, 0.2);
+            transform: translateY(-2px);
+        }
+        .mode-icon {
+            font-size: 1.6rem;
+            line-height: 1;
+        }
+        .mode-title {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        .mode-desc {
+            font-size: 0.72rem;
+            color: var(--text-secondary);
+            line-height: 1.1;
+        }
+        .error-msg {
+            background: rgba(224, 93, 93, 0.08);
+            border: 1px solid rgba(224, 93, 93, 0.2);
+            color: #c0392b;
+            padding: 14px;
+            border-radius: var(--radius-sm);
+            margin-bottom: 24px;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body class="register-body">
+    <div class="register-container">
+        <div class="register-card">
+            <div class="register-logo"><img src="/images/logo.png" alt="WaBot" class="logo-img-lg" onerror="this.style.display='none'"></div>
+            <h1 class="register-title">Crear Cuenta</h1>
+            <p class="register-subtitle">Registrate gratis y gestioná tu negocio con IA por WhatsApp</p>
+
+            <% if (error) { %>
+                <div class="error-msg"><%= error %></div>
+            <% } %>
+
+            <form action="/register" method="POST">
+                <div class="form-group">
+                    <label>Modo de Operación del Negocio</label>
+                    <div class="mode-selector-grid">
+                        <label class="mode-card">
+                            <input type="radio" name="operatingMode" value="store" checked>
+                            <div class="mode-card-inner">
+                                <span class="mode-icon">🛍️</span>
+                                <span class="mode-title">Tienda / Pedidos</span>
+                                <span class="mode-desc">Catálogo y Carrito</span>
+                            </div>
+                        </label>
+                        <label class="mode-card">
+                            <input type="radio" name="operatingMode" value="clinic">
+                            <div class="mode-card-inner">
+                                <span class="mode-icon">🏥</span>
+                                <span class="mode-title">Clínica / Turnos</span>
+                                <span class="mode-desc">Agendamiento de Citas</span>
+                            </div>
+                        </label>
+                        <label class="mode-card">
+                            <input type="radio" name="operatingMode" value="hostel">
+                            <div class="mode-card-inner">
+                                <span class="mode-icon">🏨</span>
+                                <span class="mode-title">Hostel / Reserva</span>
+                                <span class="mode-desc">Alojamiento y Camas</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="name">Tu nombre</label>
+                    <input type="text" id="name" name="name" placeholder="Ej. Juan Pérez" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" placeholder="juan@negocio.com" required>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="password">Contraseña</label>
+                        <input type="password" id="password" name="password" placeholder="Mínimo 6 caracteres" minlength="6" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="confirmPassword">Confirmar</label>
+                        <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Repetí la contraseña" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="businessType">Rubro / Plantilla</label>
+                    <select id="businessType" name="businessType" required>
+                        <option value="">Seleccioná tu rubro</option>
+                        <% var keys = Object.keys(templates); for (var i = 0; i < keys.length; i++) { var key = keys[i]; var template = templates[key]; %>
+                            <option value="<%= key %>"><%= template.emoji %> <%= template.name %></option>
+                        <% } %>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="storeName">Nombre del local</label>
+                    <input type="text" id="storeName" name="storeName" placeholder="Ej. Mi Pizzería / Clínica Central" required>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="phone">WhatsApp (opcional)</label>
+                        <input type="text" id="phone" name="phone" placeholder="+59899111111">
+                    </div>
+                    <div class="form-group">
+                        <label for="address">Dirección (opcional)</label>
+                        <input type="text" id="address" name="address" placeholder="Av. 18 de Julio 1234">
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-primary">Crear Mi Cuenta Gratis</button>
+            </form>
+
+            <div class="login-link">
+                ¿Ya tenés cuenta? <a href="/login">Iniciar Sesión</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

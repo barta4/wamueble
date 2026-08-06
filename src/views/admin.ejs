@@ -1,0 +1,1121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css?v=4">
+    <link rel="stylesheet" href="/css/chat-pro.css?v=1">
+    <script src="/js/theme-toggle.js"></script>
+</head>
+<body class="admin-body">
+    <!-- Header -->
+    <header class="admin-header">
+        <div class="header-left">
+            <img src="/images/logo.png" alt="UruBot" class="logo-img-sm">
+            <h1 class="store-name"><%= store ? store.name : 'UruBot' %> — Admin</h1>
+        </div>
+        <div class="header-right">
+            <% if (user && user.role === 'superadmin') { %>
+                <a href="/superadmin" class="nav-link active-saas">👑 Panel SaaS</a>
+            <% } %>
+            <a href="/pedidos" class="nav-link">📺 Pedidos</a>
+            <button id="themeToggleBtn" class="nav-link" style="background: transparent; border: none; cursor: pointer; font-size: 1.15rem; color: var(--text-primary); padding: 6px 12px; display: inline-flex; align-items: center; justify-content: center;" title="Cambiar Tema">🌙</button>
+            <a href="/logout" class="nav-link logout">Cerrar Sesión</a>
+        </div>
+    </header>
+
+    <main class="admin-main">
+        <!-- Tabs -->
+        <div class="admin-tabs">
+            <div class="dropdown">
+                <button class="tab-btn active dropdown-toggle" id="catalog-dropdown-btn">📦 Catálogo ▼</button>
+                <div class="dropdown-menu">
+                    <button class="dropdown-item active" data-tab="products" onclick="switchTab('products')">📦 Productos</button>
+                    <% if (store && store.clinic_mode === 1) { %>
+                    <button class="dropdown-item" data-tab="services" onclick="switchTab('services')">⚕️ Servicios</button>
+                    <button class="dropdown-item" data-tab="doctors" onclick="switchTab('doctors')">👨‍⚕️ Doctores</button>
+                    <% } %>
+                    <% if (store && store.hostel_mode === 1) { %>
+                    <button class="dropdown-item" data-tab="rooms" onclick="switchTab('rooms')">🛏️ Habitaciones</button>
+                    <% } %>
+                </div>
+            </div>
+            <button class="tab-btn" data-tab="appointments" onclick="switchTab('appointments')" id="tab-appointments-btn" style="display: none;">📅 Citas</button>
+            <button class="tab-btn" data-tab="bookings" onclick="switchTab('bookings')" id="tab-bookings-btn" style="display: none;">🏨 Reservas</button>
+            <button class="tab-btn" data-tab="drivers" onclick="switchTab('drivers')">🛵 Repartidores</button>
+            <button class="tab-btn" data-tab="chats" onclick="switchTab('chats')">💬 Chats <span class="badge-red" id="chatsHandoffBadge" style="display: none;">!</span></button>
+            <button class="tab-btn" data-tab="history" onclick="switchTab('history')">📜 Historial</button>
+            <button class="tab-btn" data-tab="customers" onclick="switchTab('customers')">👥 Clientes</button>
+            <div class="dropdown">
+                <button class="tab-btn dropdown-toggle">⚙️ Ajustes ▼</button>
+                <div class="dropdown-menu">
+                    <button class="dropdown-item" data-tab="settings" onclick="switchTab('settings')">⚙️ Ajustes Bot</button>
+                    <button class="dropdown-item" data-tab="excel" onclick="switchTab('excel')">📊 Excel</button>
+                    <button class="dropdown-item" data-tab="database" onclick="switchTab('database')">🗄️ BD Externa</button>
+                    <button class="dropdown-item" data-tab="whatsapp" onclick="switchTab('whatsapp')">📱 Conexión WhatsApp</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Productos -->
+        <section class="tab-content active" id="tab-products">
+            <div class="form-card">
+                <h3 id="formTitle-products">➕ Nuevo Producto</h3>
+                <form id="productForm" onsubmit="saveProduct(event, false)">
+                    <input type="hidden" id="productId" value="">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="productName">Nombre</label>
+                            <input type="text" id="productName" placeholder="Pizza Muzzarella" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="productPrice">Precio ($)</label>
+                            <input type="number" id="productPrice" placeholder="350" step="0.01" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="productCategory">Categoría</label>
+                            <input type="text" id="productCategory" list="categoryOptions" placeholder="Ej: Pizzas, Bebidas..." required>
+                            <datalist id="categoryOptions"></datalist>
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="productDescription">Descripción</label>
+                            <input type="text" id="productDescription" placeholder="Clásica con muzzarella y salsa de tomate">
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="productImage">Imagen del Producto (para enviar por WhatsApp)</label>
+                            <input type="file" id="productImage" accept="image/*">
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary" id="submitBtn-products">Guardar</button>
+                        <button type="button" class="btn-secondary" onclick="resetForm(false)">Cancelar</button>
+                    </div>
+                </form>
+            </div>
+            <div class="products-list" id="productsList">
+                <div class="loading">Cargando productos...</div>
+            </div>
+        </section>
+
+        <!-- Tab: Doctores (solo en modo clínica) -->
+        <% if (store && store.clinic_mode === 1) { %>
+        <section class="tab-content" id="tab-doctors">
+            <div class="form-card">
+                <h3>➕ Agregar Profesional / Doctor</h3>
+                <form id="doctorForm" onsubmit="saveDoctor(event)">
+                    <input type="hidden" id="doctorId" value="">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="docName">Nombre del Profesional *</label>
+                            <input type="text" id="docName" placeholder="Ej: Dr. Juan Pérez" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="docSpecialty">Especialidad</label>
+                            <input type="text" id="docSpecialty" placeholder="Ej: Odontología, Medicina General">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="margin-top: 15px;">Guardar Profesional</button>
+                    <button type="button" class="btn btn-secondary" onclick="resetDoctorForm()" style="margin-top: 15px;">Cancelar</button>
+                </form>
+            </div>
+
+            <div class="card" style="margin-top: 20px;">
+                <h3>👨‍⚕️ Profesionales Registrados</h3>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Especialidad</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="doctorsTableBody">
+                            <tr><td colspan="4" style="text-align:center">Cargando doctores...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+        <% } %>
+
+        <!-- Tab: Servicios (Modo Clínica) -->
+        <% if (store && store.clinic_mode === 1) { %>
+        <section class="tab-content" id="tab-services">
+            <div class="form-card">
+                <h3 id="formTitle-services">➕ Nuevo Servicio</h3>
+                <form id="serviceForm" onsubmit="saveProduct(event, true)">
+                    <input type="hidden" id="serviceId" value="">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="serviceName">Nombre del Servicio</label>
+                            <input type="text" id="serviceName" placeholder="Consulta General" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="servicePrice">Precio ($)</label>
+                            <input type="number" id="servicePrice" placeholder="1500" step="0.01" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="serviceDuration">Duración (minutos)</label>
+                            <input type="number" id="serviceDuration" placeholder="30" min="5" step="5" required>
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="serviceDescription">Descripción</label>
+                            <input type="text" id="serviceDescription" placeholder="Evaluación primaria">
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary" id="submitBtn-services">Guardar</button>
+                        <button type="button" class="btn-secondary" onclick="resetForm(true)">Cancelar</button>
+                    </div>
+                </form>
+            </div>
+            <div class="products-list" id="servicesList">
+                <div class="loading">Cargando servicios...</div>
+            </div>
+        </section>
+        <% } %>
+
+        <!-- Tab: Citas (Modo Clínica) -->
+        <section class="tab-content" id="tab-appointments" style="flex-direction: column; height: calc(100vh - 100px); margin: -20px; padding: 20px; box-sizing: border-box;">
+            <!-- Controles superiores -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+                <h3 style="margin: 0; font-size: 1.5rem; font-weight: 700; color: var(--text-primary);">📅 Agenda</h3>
+                
+                <div style="display: flex; gap: 12px; align-items: center;">
+                    <input type="date" id="appointmentDateFilter" onchange="filterAppointments()" style="padding: 8px 16px; border-radius: 8px; background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-primary);">
+                    <select id="appointmentStatusFilter" onchange="filterAppointments()" style="padding: 8px 16px; border-radius: 8px; background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-primary);">
+                        <option value="">Todos los estados</option>
+                        <option value="pending">Pendientes</option>
+                        <option value="confirmed">Confirmadas</option>
+                        <option value="completed">Completadas</option>
+                        <option value="cancelled">Canceladas</option>
+                    </select>
+                    <button class="btn-primary" onclick="showNewAppointmentForm()" style="padding: 8px 20px; font-weight: 600; border-radius: 8px;">➕ Nueva Cita</button>
+                </div>
+            </div>
+
+            <!-- Calendario FullCalendar (Toma el resto del espacio) -->
+            <div id="appointmentsCalendar" class="premium-calendar" style="flex: 1; min-height: 0;"></div>
+
+            <!-- Formulario nueva cita (oculto por defecto) -->
+            <div class="form-card" id="newAppointmentForm" style="display: none;">
+                <h3 id="aptFormTitle">➕ Nueva Cita</h3>
+                <form id="appointmentForm" onsubmit="saveAppointment(event)">
+                    <input type="hidden" id="appointmentId" value="">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="aptCustomerPhone">Teléfono del Paciente *</label>
+                            <input type="text" id="aptCustomerPhone" placeholder="+59899000000" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="aptCustomerName">Nombre del Paciente</label>
+                            <input type="text" id="aptCustomerName" placeholder="Juan Pérez">
+                        </div>
+                        <div class="form-group">
+                            <label for="aptService">Servicio *</label>
+                            <select id="aptService" required style="width: 100%; padding: 12px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary);">
+                                <option value="">Seleccionar servicio...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="aptDoctor">Profesional / Doctor</label>
+                            <select id="aptDoctor" style="width: 100%; padding: 12px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary);">
+                                <option value="">Sin preferencia / Cualquier doctor</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="aptDate">Fecha *</label>
+                            <input type="date" id="aptDate" required onchange="loadAvailableSlots()">
+                        </div>
+                        <div class="form-group">
+                            <label for="aptTime">Hora *</label>
+                            <select id="aptTime" required style="width: 100%; padding: 12px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary);">
+                                <option value="">Seleccionar hora...</option>
+                            </select>
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="aptNotes">Notas / Motivo de consulta</label>
+                            <textarea id="aptNotes" rows="3" placeholder="Motivo de la consulta, observaciones..." style="width: 100%; padding: 12px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary); resize: vertical;"></textarea>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary" id="aptSubmitBtn">Guardar Cita</button>
+                        <button type="button" class="btn-secondary" onclick="resetAppointmentForm()">Cancelar</button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- Tab: Habitaciones (Modo Hostel) -->
+        <section class="tab-content" id="tab-rooms">
+            <div class="form-card">
+                <h3 id="formTitle-rooms">➕ Nueva Habitación / Dormitorio</h3>
+                <form id="roomForm" onsubmit="saveRoom(event)">
+                    <input type="hidden" id="roomId" value="">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="roomName">Nombre de Habitación/Dorm *</label>
+                            <input type="text" id="roomName" placeholder="Dormitorio 6 Camas Mixto" required>
+                        </div>
+                        <div class="form-group">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                <label for="roomType" style="margin-bottom:0;">Tipo *</label>
+                                <button type="button" onclick="openRoomTypesModal()" class="btn-secondary" style="padding: 2px 8px; font-size: 0.8rem; cursor: pointer;">⚙️ Gestionar Tipos</button>
+                            </div>
+                            <select id="roomType" style="width: 100%; padding: 12px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary);">
+                                <option value="shared_dorm">Dormitorio Compartido (Camas)</option>
+                                <option value="private">Habitación Privada</option>
+                                <option value="suite">Suite Especial</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="roomPrice">Precio por Noche *</label>
+                            <input type="number" step="0.01" id="roomPrice" placeholder="25.00" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="roomCapacity">Capacidad Máxima (personas)</label>
+                            <input type="number" id="roomCapacity" placeholder="6" value="1">
+                        </div>
+                        <div class="form-group">
+                            <label for="roomTotalUnits">Unidades / Camas Totales</label>
+                            <input type="number" id="roomTotalUnits" placeholder="6" value="1">
+                        </div>
+                        <div class="form-group" style="grid-column: span 2;">
+                            <label for="roomDescription">Descripción / Amenidades</label>
+                            <input type="text" id="roomDescription" placeholder="Aire acondicionado, lockers individuales, baño en suite">
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary" id="btnSaveRoom">Guardar Habitación</button>
+                        <button type="button" class="btn-secondary" onclick="resetRoomForm()">Cancelar</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="table-card">
+                <h3>🛏️ Inventario de Habitaciones</h3>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Tipo</th>
+                                <th>Precio/Noche</th>
+                                <th>Capacidad</th>
+                                <th>Unidades</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="roomsTableBody">
+                            <tr><td colspan="6" style="text-align:center">Cargando habitaciones...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tab: Reservas (Modo Hostel) -->
+        <section class="tab-content" id="tab-bookings">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+                <h3 style="margin: 0; font-size: 1.5rem; font-weight: 700; color: var(--text-primary);">🏨 Reservas del Hostel</h3>
+                
+                <div style="display: flex; gap: 12px; align-items: center;">
+                    <select id="bookingStatusFilter" onchange="loadBookings()" style="padding: 8px 16px; border-radius: 8px; background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-primary);">
+                        <option value="">Todos los estados</option>
+                        <option value="pending">Pendientes</option>
+                        <option value="confirmed">Confirmadas</option>
+                        <option value="checked_in">Checked-In</option>
+                        <option value="checked_out">Checked-Out</option>
+                        <option value="cancelled">Canceladas</option>
+                    </select>
+                    <button class="btn-primary" onclick="showNewBookingModal()" style="padding: 8px 20px; font-weight: 600; border-radius: 8px;">➕ Nueva Reserva Manual</button>
+                </div>
+            </div>
+
+            <div class="table-card">
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Nº Reserva</th>
+                                <th>Huésped</th>
+                                <th>Teléfono</th>
+                                <th>Habitación</th>
+                                <th>Check-In</th>
+                                <th>Check-Out</th>
+                                <th>Huéspedes</th>
+                                <th>Total</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bookingsTableBody">
+                            <tr><td colspan="10" style="text-align:center">Cargando reservas...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Modal Nueva Reserva Manual -->
+            <div id="newBookingModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; align-items: center; justify-content: center;">
+                <div class="form-card" style="width: 90%; max-width: 600px; background: var(--bg-card); border-radius: 12px; padding: 24px;">
+                    <h3 style="margin-top: 0;">➕ Nueva Reserva Manual</h3>
+                    <form id="bookingForm" onsubmit="saveManualBooking(event)">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="bCustomerPhone">Teléfono del Huésped *</label>
+                                <input type="text" id="bCustomerPhone" placeholder="+59899000000" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="bCustomerName">Nombre Completo</label>
+                                <input type="text" id="bCustomerName" placeholder="Juan Pérez">
+                            </div>
+                            <div class="form-group">
+                                <label for="bRoomId">Habitación *</label>
+                                <select id="bRoomId" required style="width: 100%; padding: 12px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary);">
+                                    <option value="">Cargando opciones...</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="bGuestsCount">Cantidad de Huéspedes</label>
+                                <input type="number" id="bGuestsCount" value="1" min="1">
+                            </div>
+                            <div class="form-group">
+                                <label for="bCheckIn">Check-In *</label>
+                                <input type="date" id="bCheckIn" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="bCheckOut">Check-Out *</label>
+                                <input type="date" id="bCheckOut" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="bTotalPrice">Precio Total ($)</label>
+                                <input type="number" step="0.01" id="bTotalPrice" placeholder="100.00">
+                            </div>
+                            <div class="form-group">
+                                <label for="bPaymentMethod">Método de Pago</label>
+                                <select id="bPaymentMethod" style="width: 100%; padding: 12px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary);">
+                                    <option value="Efectivo">Efectivo</option>
+                                    <option value="Transferencia">Transferencia</option>
+                                    <option value="Mercado Pago">Mercado Pago / Tarjeta</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="grid-column: span 2;">
+                                <label for="bNotes">Notas / Observaciones</label>
+                                <input type="text" id="bNotes" placeholder="Llega tarde cerca de las 22hs">
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 12px; margin-top: 20px; justify-content: flex-end;">
+                            <button type="button" class="btn-secondary" onclick="hideNewBookingModal()">Cancelar</button>
+                            <button type="submit" class="btn-primary">Guardar Reserva</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tab: Repartidores -->
+        <section class="tab-content" id="tab-drivers">
+            <div class="form-card">
+                <h3 id="driverFormTitle">➕ Nuevo Repartidor</h3>
+                <form id="driverForm" onsubmit="saveDriver(event)">
+                    <input type="hidden" id="driverId" value="">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="driverName">Nombre</label>
+                            <input type="text" id="driverName" placeholder="Carlos" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="driverPhone">Teléfono WhatsApp</label>
+                            <input type="text" id="driverPhone" placeholder="+59899000000" required>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary" id="driverSubmitBtn">Guardar</button>
+                        <button type="button" class="btn-secondary" onclick="resetDriverForm()">Cancelar</button>
+                    </div>
+                </form>
+            </div>
+            <div class="products-list" id="driversList">
+                <div class="loading">Cargando repartidores...</div>
+            </div>
+        </section>
+
+        <!-- Tab: Chats / Atención Humana (CRM Inbox Style) -->
+        <section class="tab-content" id="tab-chats">
+            <div class="chat-container-layout">
+                
+                <!-- Columna 1: Navegación de Bandejas (NUEVA) -->
+                <div class="chat-inbox-nav">
+                    <div class="inbox-nav-brand">
+                        <span>💬</span>
+                        <h2>Bandejas</h2>
+                    </div>
+                    <nav class="inbox-nav-menu">
+                        <button class="inbox-nav-item active" data-filter="all" onclick="window.ChatProInstance && window.ChatProInstance.setFilter('all')">
+                            <span class="nav-icon">📥</span>
+                            Mi bandeja
+                            <span class="nav-badge" id="navBadgeAll">0</span>
+                        </button>
+                        <button class="inbox-nav-item" data-filter="favorites" onclick="window.ChatProInstance && window.ChatProInstance.setFilter('favorites')">
+                            <span class="nav-icon">⭐</span>
+                            Favoritos
+                            <span class="nav-badge" id="navBadgeFav">0</span>
+                        </button>
+                        <button class="inbox-nav-item" data-filter="archived" onclick="window.ChatProInstance && window.ChatProInstance.setFilter('archived')">
+                            <span class="nav-icon">🗄️</span>
+                            Archivados
+                        </button>
+                        <div class="inbox-nav-divider"></div>
+                        <button class="inbox-nav-item" onclick="switchTab('customers')">
+                            <span class="nav-icon">👥</span>
+                            Contactos
+                        </button>
+                        <button class="inbox-nav-item" onclick="switchTab('history')">
+                            <span class="nav-icon">📊</span>
+                            Reportes
+                        </button>
+                    </nav>
+                </div>
+
+                <!-- Columna 2: Lista de Conversaciones -->
+                <div class="chat-sidebar">
+                    <div class="chat-sidebar-header">
+                        <h3 style="margin:0 0 12px 0; font-size: 1.1rem;">Bandeja de entrada</h3>
+                        <div class="chat-search-box">
+                            <span class="chat-search-icon">🔍</span>
+                            <input type="text" id="chatSearchInput" class="chat-search-input" placeholder="Buscar conversación...">
+                        </div>
+                    </div>
+                    <div class="chat-list" id="chatList">
+                        <div class="loading">Cargando chats...</div>
+                    </div>
+                </div>
+
+                <!-- Columna 3: Ventana Activa (Chat y Herramientas) -->
+                <div class="chat-window" id="chatWindow">
+                    <div class="chat-window-placeholder">
+                        <div class="chat-placeholder-icon">📬</div>
+                        <p>Seleccioná una conversación de tu bandeja para responder.</p>
+                    </div>
+                </div>
+                
+                <!-- Panel de Info del Contacto (Slide-in) -->
+                <div class="chat-info-panel" id="chatInfoPanel">
+                    <div class="info-panel-header">
+                        <button id="closeInfoPanel">✖</button>
+                        <h3>Info. del contacto</h3>
+                    </div>
+                    <div class="info-panel-content">
+                        <div id="infoAvatar" class="info-avatar-large">?</div>
+                        <div class="info-name" id="infoName">Cargando...</div>
+                        <div class="info-phone" id="infoPhone">...</div>
+                        
+                        <div class="info-actions">
+                            <button class="info-action-btn" id="infoBtnFav" onclick="window.ChatProInstance.toggleFavorite(window.ChatProInstance.activePhone)">⭐ Marcar como favorito</button>
+                            <button class="info-action-btn" id="infoBtnArch" onclick="window.ChatProInstance.toggleArchive(window.ChatProInstance.activePhone)">📥 Archivar chat</button>
+                            <button class="info-action-btn danger" id="infoBtnBlock" onclick="window.ChatProInstance.toggleBlock(window.ChatProInstance.activePhone)">🚫 Bloquear contacto</button>
+                            <button class="info-action-btn danger" onclick="window.ChatProInstance.promptClear(window.ChatProInstance.activePhone)">🗑️ Vaciar chat</button>
+                            <button class="info-action-btn danger" onclick="window.ChatProInstance.promptDelete(window.ChatProInstance.activePhone)">❌ Eliminar de la lista</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Context Menu (Click derecho) -->
+            <div id="chatContextMenu" class="chat-context-menu">
+                <div class="context-menu-item" onclick="window.ChatProInstance.toggleFavorite(window.ChatProInstance.contextMenuTarget.customer_phone)"><span style="width:20px;text-align:center;">⭐</span> <span id="ctxFavText">Marcar como favorito</span></div>
+                <div class="context-menu-item" onclick="window.ChatProInstance.toggleArchive(window.ChatProInstance.contextMenuTarget.customer_phone)"><span style="width:20px;text-align:center;">📥</span> <span id="ctxArchText">Archivar chat</span></div>
+                <div class="context-menu-item" onclick="window.ChatProInstance.promptClear(window.ChatProInstance.contextMenuTarget.customer_phone)"><span style="width:20px;text-align:center;">🗑️</span> Vaciar mensajes</div>
+                <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin:4px 0;">
+                <div class="context-menu-item danger" onclick="window.ChatProInstance.toggleBlock(window.ChatProInstance.contextMenuTarget.customer_phone)"><span style="width:20px;text-align:center;">🚫</span> <span id="ctxBlockText">Bloquear contacto</span></div>
+                <div class="context-menu-item danger" onclick="window.ChatProInstance.promptDelete(window.ChatProInstance.contextMenuTarget.customer_phone)"><span style="width:20px;text-align:center;">❌</span> Eliminar chat</div>
+            </div>
+            
+            <!-- Modal Overlay -->
+            <div id="chatModalOverlay" class="chat-modal-overlay">
+                <div class="chat-modal-content">
+                    <div id="chatModalTitle" class="chat-modal-title">Título</div>
+                    <div id="chatModalText" class="chat-modal-text">Texto</div>
+                    <div class="chat-modal-actions">
+                        <button class="chat-modal-btn cancel" onclick="window.ChatProInstance.closeModal()">Cancelar</button>
+                        <button id="chatModalConfirm" class="chat-modal-btn confirm">Confirmar</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Lightbox -->
+            <div id="chatLightbox" class="chat-lightbox">
+                <button class="chat-lightbox-close" onclick="window.ChatProInstance.closeLightbox()">✖</button>
+                <img id="chatLightboxImg" src="" alt="Media fullscreen">
+            </div>
+        </section>
+
+        <!-- Tab: Historial -->
+        <section class="tab-content" id="tab-history">
+            <!-- Reporte Diario -->
+            <div class="daily-report-container" id="dailyReportContainer">
+                <div class="loading">Cargando reporte diario...</div>
+            </div>
+
+            <h3 style="margin-top: 32px; margin-bottom: 16px; font-weight: 700; color: var(--text-primary);">📜 Historial Completo</h3>
+            <div class="history-list" id="historyList">
+                <div class="loading">Cargando historial...</div>
+            </div>
+        </section>
+
+        <!-- Tab: Clientes (CRM) -->
+        <section class="tab-content" id="tab-customers">
+            <div style="display: flex; gap: 20px; height: calc(100vh - 180px);">
+                <!-- Lista de clientes -->
+                <div style="flex: 1; background: var(--bg-surface); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; overflow: hidden; border-radius: var(--radius-lg); border: 1px solid var(--border-color);">
+                    <h3 style="padding: 16px 20px; border-bottom: 1px solid var(--border-color); margin: 0; background: var(--bg-card);">👥 Directorio de Clientes</h3>
+                    <div id="customersList" style="flex: 1; overflow-y: auto;">
+                        <div class="loading">Cargando clientes...</div>
+                    </div>
+                </div>
+
+                <!-- Detalle del cliente -->
+                <div style="flex: 1; background: var(--bg-card); border-radius: var(--radius-lg); border: 1px solid var(--border-color); display: flex; flex-direction: column; overflow: hidden;">
+                    <div id="customerDetail" style="display: none; flex-direction: column; height: 100%;">
+                        <div style="padding: 20px; border-bottom: 1px solid var(--border-color); background: var(--bg-surface);">
+                            <h2 id="cdName" style="margin: 0 0 5px 0;">Nombre del Cliente</h2>
+                            <p id="cdPhone" style="color: var(--text-muted); margin: 0;"></p>
+                        </div>
+                        <div style="padding: 20px; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 20px;">
+                            <div class="form-group">
+                                <label>Instrucciones / Notas para el Bot IA</label>
+                                <textarea id="cdBotNotes" rows="3" placeholder="Ej: Es celíaco, ofrecer siempre sin TACC. Cliente VIP." style="width: 100%; padding: 12px; border-radius: 8px; background: var(--bg-input); border: 1px solid var(--border-color); color: white; resize: vertical;"></textarea>
+                                <button class="btn-primary" onclick="saveCustomerNotes()" style="margin-top: 10px; width: 100%;">💾 Guardar Notas para el Bot</button>
+                            </div>
+                            
+                            <div>
+                                <h3 style="margin-bottom: 10px;">🛒 Últimos Pedidos Entregados</h3>
+                                <div id="cdOrdersList" style="display: flex; flex-direction: column; gap: 10px;">
+                                    <!-- Pedidos aquí -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="customerPlaceholder" style="flex: 1; display: flex; align-items: center; justify-content: center; color: var(--text-muted);">
+                        Selecciona un cliente para ver su perfil y editar sus notas para la IA.
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tab: Excel -->
+        <section class="tab-content" id="tab-excel">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                <!-- Importar -->
+                <div class="form-card">
+                    <h3>📥 Importar Productos y Servicios desde Excel</h3>
+                    <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 16px;">
+                        Subí un archivo Excel (.xlsx, .xls) o CSV con tu catálogo. La primera fila debe contener los nombres de las columnas.
+                    </p>
+
+                    <form id="excelUploadForm" onsubmit="uploadExcel(event)">
+                        <div class="form-group">
+                            <label>Seleccionar archivo</label>
+                            <input type="file" id="excelFileInput" accept=".xlsx,.xls,.csv,.tsv" required
+                                style="width: 100%; padding: 12px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary);">
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn-primary" id="btnUploadExcel">📤 Subir y Previsualizar</button>
+                        </div>
+                    </form>
+
+                    <!-- Preview de datos -->
+                    <div id="excelPreviewSection" style="display: none; margin-top: 20px;">
+                        <h4 style="margin-bottom: 12px;">Mapeo de Columnas</h4>
+                        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 12px;">
+                            Seleccioná qué columna del archivo corresponde a cada campo del producto.
+                        </p>
+                        
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Nombre del Producto *</label>
+                                <select id="excelMapName" required style="width: 100%; padding: 12px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary);"></select>
+                            </div>
+                            <div class="form-group">
+                                <label>Precio *</label>
+                                <select id="excelMapPrice" required style="width: 100%; padding: 12px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary);"></select>
+                            </div>
+                            <div class="form-group">
+                                <label>Descripción</label>
+                                <select id="excelMapDescription" style="width: 100%; padding: 12px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary);"></select>
+                            </div>
+                            <div class="form-group">
+                                <label>Categoría</label>
+                                <select id="excelMapCategory" style="width: 100%; padding: 12px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary);"></select>
+                            </div>
+                            <div class="form-group">
+                                <label>Es Servicio (Sí/No)</label>
+                                <select id="excelMapIsService" style="width: 100%; padding: 12px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary);"></select>
+                            </div>
+                            <div class="form-group">
+                                <label>Duración (min)</label>
+                                <select id="excelMapDuration" style="width: 100%; padding: 12px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary);"></select>
+                            </div>
+                        </div>
+
+                        <!-- Vista previa -->
+                        <div id="excelDataPreview" style="display: none; margin-top: 16px;">
+                            <h4 style="margin-bottom: 8px;">Vista Previa (primeras 10 filas)</h4>
+                            <div style="overflow-x: auto; border: 1px solid var(--border-color); border-radius: 8px; max-height: 300px; overflow-y: auto;">
+                                <table id="excelPreviewTable" style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="form-actions" style="margin-top: 16px;">
+                            <button type="button" class="btn-primary" onclick="importExcelProducts()" id="btnImportExcel">📥 Importar Catálogo</button>
+                        </div>
+                    </div>
+
+                    <div id="excelImportResult" style="display: none; margin-top: 16px; padding: 12px; border-radius: 8px;"></div>
+                </div>
+
+                <!-- Exportar -->
+                <div class="form-card">
+                    <h3>📤 Exportar Catálogo</h3>
+                    <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 16px;">
+                        Descargá tu catálogo de productos y servicios actual como archivo Excel o CSV.
+                    </p>
+
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <button class="btn-primary" onclick="exportExcel('xlsx')" style="width: 100%; padding: 14px;">
+                            📊 Descargar como Excel (.xlsx)
+                        </button>
+                        <button class="btn-secondary" onclick="exportExcel('csv')" style="width: 100%; padding: 14px;">
+                            📄 Descargar como CSV
+                        </button>
+                    </div>
+
+                    <div id="excelExportResult" style="display: none; margin-top: 16px; padding: 12px; border-radius: 8px;"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tab: Ajustes -->
+        <section class="tab-content" id="tab-settings">
+            <!-- Modo Clínica Toggle -->
+            <div class="form-card" style="margin-bottom: 24px; border: 2px solid var(--border-color);">
+                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
+                    <div>
+                        <h3 style="margin: 0 0 4px 0;">🏥 Modo Clínica / Citas</h3>
+                        <p style="margin: 0; font-size: 0.9rem; color: var(--text-secondary);">
+                            Activa este modo para agendar citas en lugar de tomar pedidos. El agente IA cambiará su comportamiento para gestionar turnos.
+                        </p>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 16px; flex-shrink: 0;">
+                        <div id="clinicModeBadge" style="display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 999px; font-weight: 600; font-size: 0.95rem;">
+                            <span id="clinicModeDot" style="width: 10px; height: 10px; border-radius: 50%; display: inline-block;"></span>
+                            <span id="clinicModeText">Modo: Tienda</span>
+                        </div>
+                        <button id="clinicModeOffBtn" class="btn-danger" onclick="toggleClinicMode(false)"
+                            style="background: #ef4444; color: white; padding: 10px 20px; border-radius: 8px; font-weight: 600; border: none; cursor: pointer; display: none;">
+                            🏪 Modo Tienda
+                        </button>
+                        <button id="clinicModeOnBtn" class="btn-primary" onclick="toggleClinicMode(true)"
+                            style="padding: 10px 20px; border-radius: 8px; font-weight: 600; border: none; cursor: pointer; display: none;">
+                            🏥 Modo Clínica
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modo Hostel Toggle -->
+            <div class="form-card" style="margin-bottom: 24px; border: 2px solid var(--border-color);">
+                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
+                    <div>
+                        <h3 style="margin: 0 0 4px 0;">🏨 Modo Hostel / Alojamiento</h3>
+                        <p style="margin: 0; font-size: 0.9rem; color: var(--text-secondary);">
+                            Activa este modo para gestionar reservas de habitaciones y camas. El agente IA actuará como recepcionista virtual.
+                        </p>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 16px; flex-shrink: 0;">
+                        <div id="hostelModeBadge" style="display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 999px; font-weight: 600; font-size: 0.95rem;">
+                            <span id="hostelModeDot" style="width: 10px; height: 10px; border-radius: 50%; display: inline-block;"></span>
+                            <span id="hostelModeText">Modo: Tienda</span>
+                        </div>
+                        <button id="hostelModeOffBtn" class="btn-danger" onclick="toggleHostelMode(false)"
+                            style="background: #ef4444; color: white; padding: 10px 20px; border-radius: 8px; font-weight: 600; border: none; cursor: pointer; display: none;">
+                            🏪 Desactivar Hostel
+                        </button>
+                        <button id="hostelModeOnBtn" class="btn-primary" onclick="toggleHostelMode(true)"
+                            style="padding: 10px 20px; border-radius: 8px; font-weight: 600; border: none; cursor: pointer; display: none;">
+                            🏨 Activar Modo Hostel
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Configuración de Horarios (solo visible en modo clínica) -->
+            <div class="form-card" id="clinicSettingsCard" style="display: none; margin-bottom: 24px;">
+                <h3>⏰ Configuración de Horarios</h3>
+                <div class="form-grid" style="margin-top: 16px;">
+                    <div class="form-group">
+                        <label for="storeWorkingHours">Horario de Atención (Ej: 08:00-12:00, 14:00-18:00)</label>
+                        <input type="text" id="storeWorkingHours" placeholder="Ej: 08:00-12:00, 14:00-18:00" value="08:00-20:00">
+                        <span style="font-size: 0.8rem; color: var(--text-secondary);">Formato: HH:MM-HH:MM</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="storeSlotDuration">Duración del Turno (minutos)</label>
+                        <input type="number" id="storeSlotDuration" placeholder="30" value="30" min="15" max="120">
+                    </div>
+                </div>
+                <button class="btn-primary" onclick="saveClinicSettings()" style="margin-top: 16px;">Guardar Horarios</button>
+            </div>
+
+            <div class="form-card">
+                <h3>⚙️ Configuración del Bot y Local</h3>
+                <form id="storeSettingsForm" onsubmit="saveStoreSettings(event)">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="storeName">Nombre del Local</label>
+                            <input type="text" id="storeName" placeholder="Pizzería Don Pepe" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="storePhone">WhatsApp del Local (Phone)</label>
+                            <input type="text" id="storePhone" placeholder="+59899111111" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="storeAddress">Dirección</label>
+                            <input type="text" id="storeAddress" placeholder="Av. 18 de Julio 1234">
+                        </div>
+                    </div>
+                    <div class="form-grid" style="margin-top: 16px;">
+                        <div class="form-group">
+                            <label for="storeBotName">Nombre de la IA (Bot Name)</label>
+                            <input type="text" id="storeBotName" placeholder="Wapit" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="storeBusinessType">Giro/Tipo de Negocio</label>
+                            <input type="text" id="storeBusinessType" placeholder="pizzería, heladería, cafetería, restaurant" required>
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-top: 16px;">
+                        <label for="storeCategories">Categorías de Productos (separadas por coma)</label>
+                        <input type="text" id="storeCategories" placeholder="Ej: Pizzas, Bebidas, Postres, Promociones" required>
+                    </div>
+                    <div class="form-group" style="margin-top: 16px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                            <label for="storeAiPrompt" style="margin: 0;">Instrucciones Adicionales para la IA (Prompt Personalizado)</label>
+                            <button type="button" class="btn-secondary" onclick="openPromptGeneratorModal()" style="font-size: 0.85rem; padding: 6px 12px; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; border: none; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 6px;">✨ Generar con IA</button>
+                        </div>
+                        <textarea id="storeAiPrompt" rows="6" placeholder="Ej: Ofrecer fainá con las pizzas. No vendemos cerveza a menores. Las entregas demoran 45 minutos." style="width: 100%; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); padding: 12px; font-family: var(--font-family); resize: vertical;"></textarea>
+                        <span style="font-size: 0.8rem; color: var(--text-secondary); display: block; margin-top: 6px;">Estas instrucciones se inyectan directamente en el sistema cognitivo de la IA para moldear su comportamiento.</span>
+                    </div>
+
+                    <h4 style="margin: 28px 0 12px; color: var(--text-primary);">🔔 Avisos externos por WhatsApp y Email</h4>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="notifyPhone">WhatsApp de Aviso (secundario)</label>
+                            <input type="text" id="notifyPhone" placeholder="+59899222222 (dueño/gerente)">
+                        </div>
+                        <div class="form-group">
+                            <label for="notifyEmail">Email de Aviso</label>
+                            <input type="email" id="notifyEmail" placeholder="avisos@minegocio.com">
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-top: 12px;">
+                        <label style="font-size: 0.9rem; color: var(--text-secondary); display: block; margin-bottom: 8px;">¿Cuándo enviar el aviso?</label>
+                        <label style="display: inline-flex; align-items: center; gap: 6px; margin-right: 20px; cursor: pointer;">
+                            <input type="checkbox" id="notifyEventNew" style="width: auto;"> Cuando se toma un pedido nuevo
+                        </label>
+                        <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
+                            <input type="checkbox" id="notifyEventReady" style="width: auto;"> Cuando el pedido está listo (al despachar)
+                        </label>
+                    </div>
+
+                    <div class="form-actions" style="margin-top: 24px;">
+                        <button type="submit" class="btn-primary">Guardar Ajustes</button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- Tab: BD Externa -->
+        <section class="tab-content" id="tab-database">
+            <div class="form-card">
+                <h3>🗄️ Conectar Base de Datos Externa</h3>
+                <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 16px;">
+                    Conectá tu base de datos existente (MySQL, PostgreSQL o SQLite) para importar productos directamente a tu catálogo.
+                </p>
+                
+                <form id="dbConnectForm" onsubmit="testDbConnection(event)">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="dbType">Tipo de Base de Datos</label>
+                            <select id="dbType" required style="width: 100%; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); padding: 12px;">
+                                <option value="">Seleccionar...</option>
+                                <option value="mysql">MySQL</option>
+                                <option value="postgresql">PostgreSQL</option>
+                                <option value="sqlite">SQLite (Archivo)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="dbHost">Host / Dirección</label>
+                            <input type="text" id="dbHost" placeholder="localhost">
+                        </div>
+                        <div class="form-group">
+                            <label for="dbPort">Puerto</label>
+                            <input type="number" id="dbPort" placeholder="3306">
+                        </div>
+                        <div class="form-group">
+                            <label for="dbDatabase">Base de Datos / Archivo SQLite</label>
+                            <input type="text" id="dbDatabase" placeholder="mi_base_datos" required>
+                            <span style="font-size: 0.8rem; color: var(--text-secondary);">Para SQLite: ruta completa al archivo (.db)</span>
+                        </div>
+                        <div class="form-group">
+                            <label for="dbUsername">Usuario</label>
+                            <input type="text" id="dbUsername" placeholder="root">
+                        </div>
+                        <div class="form-group">
+                            <label for="dbPassword">Contraseña</label>
+                            <input type="password" id="dbPassword" placeholder="••••••••">
+                        </div>
+                    </div>
+                    <div class="form-actions" style="margin-top: 16px;">
+                        <button type="submit" class="btn-primary" id="btnTestDb">🔌 Probar Conexión</button>
+                    </div>
+                </form>
+
+                <!-- Resultado de conexión -->
+                <div id="dbConnectionResult" style="display: none; margin-top: 16px; padding: 12px; border-radius: 8px;"></div>
+            </div>
+
+            <!-- Importar Productos -->
+            <div class="form-card" id="dbImportSection" style="display: none; margin-top: 24px;">
+                <h3>📥 Importar Productos</h3>
+                <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 16px;">
+                    Seleccioná la tabla y mapeá las columnas para importar productos a tu catálogo.
+                </p>
+
+                <div class="form-group">
+                    <label for="dbTable">Tabla a importar</label>
+                    <select id="dbTable" required style="width: 100%; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); padding: 12px;">
+                        <option value="">Seleccionar tabla...</option>
+                    </select>
+                </div>
+
+                <div id="dbColumnsMapping" style="display: none; margin-top: 16px;">
+                    <h4 style="margin-bottom: 12px;">Mapeo de Columnas</h4>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Nombre del Producto *</label>
+                            <select id="mapName" class="column-map" required style="width: 100%; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); padding: 12px;"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Precio *</label>
+                            <select id="mapPrice" class="column-map" required style="width: 100%; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); padding: 12px;"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Descripción</label>
+                            <select id="mapDescription" class="column-map" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); padding: 12px;"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Categoría</label>
+                            <select id="mapCategory" class="column-map" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); padding: 12px;"></select>
+                        </div>
+                    </div>
+
+                    <!-- Preview de datos -->
+                    <div id="dbPreview" style="display: none; margin-top: 16px;">
+                        <h4 style="margin-bottom: 8px;">Vista Previa</h4>
+                        <div style="overflow-x: auto; border: 1px solid var(--border-color); border-radius: 8px;">
+                            <table id="dbPreviewTable" style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="form-actions" style="margin-top: 16px;">
+                        <button type="button" class="btn-secondary" onclick="previewDbData()">👁️ Vista Previa</button>
+                        <button type="button" class="btn-primary" onclick="importDbProducts()">📥 Importar Productos</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resultado de importación -->
+            <div id="dbImportResult" style="display: none; margin-top: 16px; padding: 12px; border-radius: 8px;"></div>
+        </section>
+
+        <!-- Tab: WhatsApp -->
+        <section class="tab-content" id="tab-whatsapp">
+
+            <!-- Widget: Interruptor del Bot -->
+            <div class="form-card" id="botControlCard" style="margin-bottom: 24px; border: 2px solid var(--border-color);">
+                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
+                    <div>
+                        <h3 style="margin: 0 0 4px 0;">🤖 Control del Bot</h3>
+                        <p style="margin: 0; font-size: 0.9rem; color: var(--text-secondary);">
+                            Cuando está apagado, el bot no responde a ningún cliente. El estado sobrevive reinicios.
+                        </p>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 16px; flex-shrink: 0;">
+                        <div id="botStatusBadge" style="display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 999px; font-weight: 600; font-size: 0.95rem; background: #dcfce7; color: #16a34a;">
+                            <span id="botStatusDot" style="width: 10px; height: 10px; border-radius: 50%; background: #16a34a; display: inline-block;"></span>
+                            <span id="botStatusText">Cargando...</span>
+                        </div>
+                        <button id="botToggleOffBtn" class="btn-danger" onclick="toggleBot(false)"
+                            style="background: #ef4444; color: white; padding: 10px 20px; border-radius: 8px; font-weight: 600; border: none; cursor: pointer; display: none;">
+                            🔕 Apagar Bot
+                        </button>
+                        <button id="botToggleOnBtn" class="btn-primary" onclick="toggleBot(true)"
+                            style="padding: 10px 20px; border-radius: 8px; font-weight: 600; border: none; cursor: pointer; display: none;">
+                            ✅ Encender Bot
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel de Conexiones -->
+            <div class="form-card" style="margin-bottom: 24px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <div>
+                        <h3 style="margin: 0;">📱 Cuentas de WhatsApp Conectadas</h3>
+                        <p id="planLimitsText" style="margin: 4px 0 0 0; font-size: 0.9rem; color: var(--text-secondary);">
+                            Límite de tu plan: Cargando...
+                        </p>
+                    </div>
+                    <button id="addConnBtn" class="btn-primary" onclick="showAddConnectionModal()" style="display: flex; align-items: center; gap: 6px; padding: 10px 20px; border-radius: 8px; font-weight: 600; border: none; cursor: pointer;">
+                        <span>➕ Conectar Nueva Cuenta</span>
+                    </button>
+                </div>
+
+                <div id="connectionsList" style="display: flex; flex-direction: column; gap: 16px;">
+                    <!-- Cargadas dinámicamente -->
+                </div>
+            </div>
+
+            <!-- Form/Pairing Panel for Active Connection (Dynamic depending on mode) -->
+            <div id="activeConnFormArea" style="display: none;" class="form-card">
+                <!-- Se inyecta dinámicamente el panel de configuración/vinculación -->
+            </div>
+            
+            <!-- Modal para agregar conexión -->
+            <div id="addConnModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; align-items: center; justify-content: center;">
+                <div class="form-card" style="width: 90%; max-width: 500px; background: var(--bg-card); position: relative; border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.25); padding: 24px;">
+                    <h3 style="margin-top: 0; margin-bottom: 16px;">Conectar Nueva Cuenta</h3>
+                    <form id="addConnForm" onsubmit="createNewConnection(event)">
+                        <div class="form-group" style="margin-bottom: 16px;">
+                            <label style="display: block; margin-bottom: 6px; font-weight: 600;">Modo de Conexión</label>
+                            <select id="newConnMode" onchange="toggleNewConnFields()" style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-body); color:var(--text-main);">
+                                <option value="baileys">📱 Dispositivo (QR / Código de vinculación)</option>
+                                <option value="meta">🌐 Meta Cloud API (Oficial)</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="newConnPhoneGroup" style="margin-bottom: 16px;">
+                            <label style="display: block; margin-bottom: 6px; font-weight: 600;">Teléfono del bot (Ej: 59899123456)</label>
+                            <input type="text" id="newConnPhone" placeholder="598..." required style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-body); color:var(--text-main);">
+                        </div>
+                        <div id="newConnMetaFields" style="display: none;">
+                            <div class="form-group" style="margin-bottom: 16px;">
+                                <label style="display: block; margin-bottom: 6px; font-weight: 600;">Access Token (Permanente)</label>
+                                <input type="password" id="newConnMetaToken" placeholder="EAAB..." style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-body); color:var(--text-main);">
+                            </div>
+                            <div class="form-group" style="margin-bottom: 16px;">
+                                <label style="display: block; margin-bottom: 6px; font-weight: 600;">Phone Number ID</label>
+                                <input type="text" id="newConnMetaPhoneId" placeholder="104938..." style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-body); color:var(--text-main);">
+                            </div>
+                            <div class="form-group" style="margin-bottom: 16px;">
+                                <label style="display: block; margin-bottom: 6px; font-weight: 600;">Verify Token (Para el Webhook)</label>
+                                <input type="text" id="newConnMetaVerifyToken" placeholder="MiTokenSecreto" style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-body); color:var(--text-main);">
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 12px; margin-top: 24px; justify-content: flex-end;">
+                            <button type="button" class="btn-secondary" onclick="hideAddConnectionModal()" style="padding: 10px 20px; border-radius: 8px; font-weight: 600; border: none; cursor: pointer;">Cancelar</button>
+                            <button type="submit" class="btn-primary" style="padding: 10px 20px; border-radius: 8px; font-weight: 600; border: none; cursor: pointer;">Crear y Configurar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+    <!-- Modal: Gestión de Tipos de Habitación -->
+    <div id="roomTypesModal" class="chat-modal-overlay" style="display: none;">
+        <div class="chat-modal-content" style="max-width: 520px; width: 90%; text-align: left;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+                <h3 style="margin: 0; color: var(--text-primary); font-size: 1.2rem;">⚙️ Gestionar Tipos de Habitación</h3>
+                <button type="button" onclick="closeRoomTypesModal()" style="background: transparent; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-primary);">✖</button>
+            </div>
+            
+            <!-- Formulario para agregar tipo -->
+            <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                <input type="text" id="newRoomTypeName" placeholder="Ej: Cabaña, Glamping, Suite..." style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary);">
+                <button type="button" onclick="addRoomType()" class="btn-primary" style="padding: 10px 16px; white-space: nowrap;">➕ Agregar</button>
+            </div>
+
+            <div id="roomTypesList" style="max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+                <!-- Lista cargada dinámicamente -->
+            </div>
+
+            <div style="margin-top: 20px; text-align: right; border-top: 1px solid var(--border-color); padding-top: 12px;">
+                <button type="button" class="btn-secondary" onclick="closeRoomTypesModal()">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Generador de Prompt Mágico -->
+    <div id="promptGeneratorModal" class="chat-modal-overlay" style="display: none;">
+        <div class="chat-modal-content" style="max-width: 540px; width: 90%; text-align: left;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+                <h3 style="margin: 0; color: var(--text-primary); font-size: 1.2rem; display: flex; align-items: center; gap: 8px;">✨ Generar Prompt Perfecto con IA</h3>
+                <button type="button" onclick="closePromptGeneratorModal()" style="background: transparent; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-primary);">✖</button>
+            </div>
+            
+            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 16px;">
+                Escribí unos pocos datos sobre tu negocio y nuestro Ingeniero de IA redactará las instrucciones óptimas para tu bot de WhatsApp.
+            </p>
+
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                <div class="form-group">
+                    <label style="font-size: 0.85rem; font-weight: 600;">¿Qué vende tu negocio y cuál es tu oferta?</label>
+                    <textarea id="genPromptDescription" rows="2" placeholder="Ej: Pizzería artesanal en Montevideo, vendemos pizzas a la piedra, empanadas y bebidas." style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary);"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label style="font-size: 0.85rem; font-weight: 600;">Tono de voz deseado</label>
+                    <select id="genPromptTone" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary);">
+                        <option value="Amigable, atento y cercano con emojis">😊 Amigable y Cercano</option>
+                        <option value="Joven, divertido, relajado y canchero">🔥 Joven y Canchero</option>
+                        <option value="Formal, profesional y ejecutivo">👔 Formal y Profesional</option>
+                        <option value="Elegante, exclusivo y sofisticado">⭐ Elegante y Sofisticado</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label style="font-size: 0.85rem; font-weight: 600;">Reglas o políticas especiales (Opcional)</label>
+                    <input type="text" id="genPromptRules" placeholder="Ej: Horario 19 a 00hs, envío gratis > $800, aceptamos MercadoPago y efectivo." style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary);">
+                </div>
+            </div>
+
+            <div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--border-color); padding-top: 12px;">
+                <button type="button" class="btn-secondary" onclick="closePromptGeneratorModal()">Cancelar</button>
+                <button type="button" id="btnGeneratePromptSubmit" class="btn-primary" onclick="generateAiPromptSubmit()" style="background: linear-gradient(135deg, #6366f1, #8b5cf6); border: none;">🪄 Generar Prompt</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js'></script>
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/locales-all.global.min.js'></script>
+    <script>
+        window.STORE_ID = Number('<%= store ? store.id : 0 %>');
+        window.STORE_CLINIC_MODE = Number('<%= store ? (store.clinic_mode || 0) : 0 %>');
+        window.STORE_HOSTEL_MODE = Number('<%= store ? (store.hostel_mode || 0) : 0 %>');
+    </script>
+    <script src="/js/admin.js"></script>
+    <script src="/js/chat-pro.js"></script>
+</body>
+</html>
