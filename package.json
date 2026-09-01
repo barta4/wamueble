@@ -1,6 +1,6 @@
 {
   "name": "wabot-saas",
-  "version": "2.0.0",
+  "version": "2.6.0",
   "description": "Sistema SaaS de Asistentes IA para Negocios — Pedidos por WhatsApp con IA, Multi-negocio, Multi-BD",
   "main": "src/server.js",
   "scripts": {
