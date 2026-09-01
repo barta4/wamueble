@@ -18,8 +18,8 @@
             <h1 class="store-name"><%= store ? store.name : 'WaBot' %> — TV Cocina</h1>
         </div>
         <div class="header-right">
-            <a href="/admin" class="nav-link" style="display: inline-flex; align-items: center; gap: 6px;">⚙️ Panel Admin</a>
-            <button id="themeToggleBtn" class="nav-link" style="background: transparent; border: none; cursor: pointer; font-size: 1.15rem; color: var(--text-primary); padding: 6px 12px; display: inline-flex; align-items: center; justify-content: center;" title="Cambiar Tema">🌙</button>
+            <a href="/admin" class="nav-link">⚙️ Panel Admin</a>
+            <button id="themeToggleBtn" class="nav-btn-icon" title="Cambiar Tema">🌙</button>
             <div class="connection-status" id="connectionStatus">
                 <span class="status-dot"></span>
                 <span class="status-text">Conectando...</span>
@@ -79,10 +79,10 @@
                         let mediaUrls = [];
                         try { mediaUrls = JSON.parse(order.media_urls); } catch(e) {}
                         if (mediaUrls.length > 0) { %>
-                        <div class="order-media" style="display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0;">
+                        <div class="order-media order-media-list">
                             <% mediaUrls.forEach(function(url) { %>
-                                <a href="<%= url %>" target="_blank" style="display: block;">
-                                    <img src="<%= url %>" alt="Adjunto" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 2px solid var(--border-color);">
+                                <a href="<%= url %>" target="_blank">
+                                    <img src="<%= url %>" alt="Adjunto" class="order-media-img">
                                 </a>
                             <% }); %>
                         </div>

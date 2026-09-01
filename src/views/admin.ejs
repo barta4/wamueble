@@ -23,7 +23,7 @@
                 <a href="/superadmin" class="nav-link active-saas">👑 Panel SaaS</a>
             <% } %>
             <a href="/pedidos" class="nav-link">📺 Pedidos</a>
-            <button id="themeToggleBtn" class="nav-link" style="background: transparent; border: none; cursor: pointer; font-size: 1.15rem; color: var(--text-primary); padding: 6px 12px; display: inline-flex; align-items: center; justify-content: center;" title="Cambiar Tema">🌙</button>
+            <button id="themeToggleBtn" class="nav-btn-icon" title="Cambiar Tema">🌙</button>
             <a href="/logout" class="nav-link logout">Cerrar Sesión</a>
         </div>
     </header>
@@ -102,13 +102,14 @@
                             <label for="docSpecialty">Especialidad</label>
                             <input type="text" id="docSpecialty" placeholder="Ej: Odontología, Medicina General">
                         </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary">Guardar Profesional</button>
+                        <button type="button" class="btn-secondary" onclick="resetDoctorForm()">Cancelar</button>
                     </div>
-                    <button type="submit" class="btn btn-primary" style="margin-top: 15px;">Guardar Profesional</button>
-                    <button type="button" class="btn btn-secondary" onclick="resetDoctorForm()" style="margin-top: 15px;">Cancelar</button>
                 </form>
             </div>
 
-            <div class="card" style="margin-top: 20px;">
+            <div class="card mt-md">
                 <h3>👨‍⚕️ Profesionales Registrados</h3>
                 <div class="table-responsive">
                     <table class="data-table">
@@ -166,19 +167,19 @@
         <!-- Tab: Citas (Modo Clínica) -->
         <section class="tab-content" id="tab-appointments" style="flex-direction: column; height: calc(100vh - 100px); margin: -20px; padding: 20px; box-sizing: border-box;">
             <!-- Controles superiores -->
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+            <div class="filter-bar">
                 <h3 style="margin: 0; font-size: 1.5rem; font-weight: 700; color: var(--text-primary);">📅 Agenda</h3>
                 
-                <div style="display: flex; gap: 12px; align-items: center;">
-                    <input type="date" id="appointmentDateFilter" onchange="filterAppointments()" style="padding: 8px 16px; border-radius: 8px; background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-primary);">
-                    <select id="appointmentStatusFilter" onchange="filterAppointments()" style="padding: 8px 16px; border-radius: 8px; background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-primary);">
+                <div class="filter-group">
+                    <input type="date" id="appointmentDateFilter" onchange="filterAppointments()" class="filter-control">
+                    <select id="appointmentStatusFilter" onchange="filterAppointments()" class="filter-control">
                         <option value="">Todos los estados</option>
                         <option value="pending">Pendientes</option>
                         <option value="confirmed">Confirmadas</option>
                         <option value="completed">Completadas</option>
                         <option value="cancelled">Canceladas</option>
                     </select>
-                    <button class="btn-primary" onclick="showNewAppointmentForm()" style="padding: 8px 20px; font-weight: 600; border-radius: 8px;">➕ Nueva Cita</button>
+                    <button class="btn-primary" onclick="showNewAppointmentForm()">➕ Nueva Cita</button>
                 </div>
             </div>
 
@@ -201,13 +202,13 @@
                         </div>
                         <div class="form-group">
                             <label for="aptService">Servicio *</label>
-                            <select id="aptService" required style="width: 100%; padding: 12px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary);">
+                            <select id="aptService" class="form-control" required>
                                 <option value="">Seleccionar servicio...</option>
                             </select>
                         </div>
                         <div class="form-group">
                             <label for="aptDoctor">Profesional / Doctor</label>
-                            <select id="aptDoctor" style="width: 100%; padding: 12px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary);">
+                            <select id="aptDoctor" class="form-control">
                                 <option value="">Sin preferencia / Cualquier doctor</option>
                             </select>
                         </div>
@@ -217,13 +218,13 @@
                         </div>
                         <div class="form-group">
                             <label for="aptTime">Hora *</label>
-                            <select id="aptTime" required style="width: 100%; padding: 12px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary);">
+                            <select id="aptTime" class="form-control" required>
                                 <option value="">Seleccionar hora...</option>
                             </select>
                         </div>
                         <div class="form-group full-width">
                             <label for="aptNotes">Notas / Motivo de consulta</label>
-                            <textarea id="aptNotes" rows="3" placeholder="Motivo de la consulta, observaciones..." style="width: 100%; padding: 12px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary); resize: vertical;"></textarea>
+                            <textarea id="aptNotes" rows="3" placeholder="Motivo de la consulta, observaciones..." class="form-control" style="resize: vertical;"></textarea>
                         </div>
                     </div>
                     <div class="form-actions">
@@ -246,11 +247,11 @@
                             <input type="text" id="roomName" placeholder="Dormitorio 6 Camas Mixto" required>
                         </div>
                         <div class="form-group">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                            <div class="flex-between" style="margin-bottom: 6px;">
                                 <label for="roomType" style="margin-bottom:0;">Tipo *</label>
                                 <button type="button" onclick="openRoomTypesModal()" class="btn-secondary" style="padding: 2px 8px; font-size: 0.8rem; cursor: pointer;">⚙️ Gestionar Tipos</button>
                             </div>
-                            <select id="roomType" style="width: 100%; padding: 12px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary);">
+                            <select id="roomType" class="form-control">
                                 <option value="shared_dorm">Dormitorio Compartido (Camas)</option>
                                 <option value="private">Habitación Privada</option>
                                 <option value="suite">Suite Especial</option>
@@ -268,7 +269,7 @@
                             <label for="roomTotalUnits">Unidades / Camas Totales</label>
                             <input type="number" id="roomTotalUnits" placeholder="6" value="1">
                         </div>
-                        <div class="form-group" style="grid-column: span 2;">
+                        <div class="form-group full-width">
                             <label for="roomDescription">Descripción / Amenidades</label>
                             <input type="text" id="roomDescription" placeholder="Aire acondicionado, lockers individuales, baño en suite">
                         </div>
@@ -304,11 +305,11 @@
 
         <!-- Tab: Reservas (Modo Hostel) -->
         <section class="tab-content" id="tab-bookings">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+            <div class="filter-bar">
                 <h3 style="margin: 0; font-size: 1.5rem; font-weight: 700; color: var(--text-primary);">🏨 Reservas del Hostel</h3>
                 
-                <div style="display: flex; gap: 12px; align-items: center;">
-                    <select id="bookingStatusFilter" onchange="loadBookings()" style="padding: 8px 16px; border-radius: 8px; background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-primary);">
+                <div class="filter-group">
+                    <select id="bookingStatusFilter" onchange="loadBookings()" class="filter-control">
                         <option value="">Todos los estados</option>
                         <option value="pending">Pendientes</option>
                         <option value="confirmed">Confirmadas</option>
@@ -316,7 +317,7 @@
                         <option value="checked_out">Checked-Out</option>
                         <option value="cancelled">Canceladas</option>
                     </select>
-                    <button class="btn-primary" onclick="showNewBookingModal()" style="padding: 8px 20px; font-weight: 600; border-radius: 8px;">➕ Nueva Reserva Manual</button>
+                    <button class="btn-primary" onclick="showNewBookingModal()">➕ Nueva Reserva Manual</button>
                 </div>
             </div>
 
@@ -345,8 +346,8 @@
             </div>
 
             <!-- Modal Nueva Reserva Manual -->
-            <div id="newBookingModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; align-items: center; justify-content: center;">
-                <div class="form-card" style="width: 90%; max-width: 600px; background: var(--bg-card); border-radius: 12px; padding: 24px;">
+            <div id="newBookingModal" class="modal-overlay">
+                <div class="form-card modal-card">
                     <h3 style="margin-top: 0;">➕ Nueva Reserva Manual</h3>
                     <form id="bookingForm" onsubmit="saveManualBooking(event)">
                         <div class="form-grid">
@@ -360,7 +361,7 @@
                             </div>
                             <div class="form-group">
                                 <label for="bRoomId">Habitación *</label>
-                                <select id="bRoomId" required style="width: 100%; padding: 12px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary);">
+                                <select id="bRoomId" class="form-control" required>
                                     <option value="">Cargando opciones...</option>
                                 </select>
                             </div>
@@ -382,18 +383,18 @@
                             </div>
                             <div class="form-group">
                                 <label for="bPaymentMethod">Método de Pago</label>
-                                <select id="bPaymentMethod" style="width: 100%; padding: 12px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary);">
+                                <select id="bPaymentMethod" class="form-control">
                                     <option value="Efectivo">Efectivo</option>
                                     <option value="Transferencia">Transferencia</option>
                                     <option value="Mercado Pago">Mercado Pago / Tarjeta</option>
                                 </select>
                             </div>
-                            <div class="form-group" style="grid-column: span 2;">
+                            <div class="form-group full-width">
                                 <label for="bNotes">Notas / Observaciones</label>
                                 <input type="text" id="bNotes" placeholder="Llega tarde cerca de las 22hs">
                             </div>
                         </div>
-                        <div style="display: flex; gap: 12px; margin-top: 20px; justify-content: flex-end;">
+                        <div class="flex-end gap-sm mt-md">
                             <button type="button" class="btn-secondary" onclick="hideNewBookingModal()">Cancelar</button>
                             <button type="submit" class="btn-primary">Guardar Reserva</button>
                         </div>
@@ -605,8 +606,7 @@
                     <form id="excelUploadForm" onsubmit="uploadExcel(event)">
                         <div class="form-group">
                             <label>Seleccionar archivo</label>
-                            <input type="file" id="excelFileInput" accept=".xlsx,.xls,.csv,.tsv" required
-                                style="width: 100%; padding: 12px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary);">
+                            <input type="file" id="excelFileInput" accept=".xlsx,.xls,.csv,.tsv" required class="form-control">
                         </div>
                         <div class="form-actions">
                             <button type="submit" class="btn-primary" id="btnUploadExcel">📤 Subir y Previsualizar</button>
@@ -623,27 +623,27 @@
                         <div class="form-grid">
                             <div class="form-group">
                                 <label>Nombre del Producto *</label>
-                                <select id="excelMapName" required style="width: 100%; padding: 12px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary);"></select>
+                                <select id="excelMapName" class="form-control" required></select>
                             </div>
                             <div class="form-group">
                                 <label>Precio *</label>
-                                <select id="excelMapPrice" required style="width: 100%; padding: 12px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary);"></select>
+                                <select id="excelMapPrice" class="form-control" required></select>
                             </div>
                             <div class="form-group">
                                 <label>Descripción</label>
-                                <select id="excelMapDescription" style="width: 100%; padding: 12px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary);"></select>
+                                <select id="excelMapDescription" class="form-control"></select>
                             </div>
                             <div class="form-group">
                                 <label>Categoría</label>
-                                <select id="excelMapCategory" style="width: 100%; padding: 12px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary);"></select>
+                                <select id="excelMapCategory" class="form-control"></select>
                             </div>
                             <div class="form-group">
                                 <label>Es Servicio (Sí/No)</label>
-                                <select id="excelMapIsService" style="width: 100%; padding: 12px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary);"></select>
+                                <select id="excelMapIsService" class="form-control"></select>
                             </div>
                             <div class="form-group">
                                 <label>Duración (min)</label>
-                                <select id="excelMapDuration" style="width: 100%; padding: 12px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary);"></select>
+                                <select id="excelMapDuration" class="form-control"></select>
                             </div>
                         </div>
 
@@ -836,7 +836,7 @@
                     <div class="form-grid">
                         <div class="form-group">
                             <label for="dbType">Tipo de Base de Datos</label>
-                            <select id="dbType" required style="width: 100%; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); padding: 12px;">
+                            <select id="dbType" class="form-control" required>
                                 <option value="">Seleccionar...</option>
                                 <option value="mysql">MySQL</option>
                                 <option value="postgresql">PostgreSQL</option>
@@ -883,7 +883,7 @@
 
                 <div class="form-group">
                     <label for="dbTable">Tabla a importar</label>
-                    <select id="dbTable" required style="width: 100%; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); padding: 12px;">
+                    <select id="dbTable" class="form-control" required>
                         <option value="">Seleccionar tabla...</option>
                     </select>
                 </div>
@@ -893,19 +893,19 @@
                     <div class="form-grid">
                         <div class="form-group">
                             <label>Nombre del Producto *</label>
-                            <select id="mapName" class="column-map" required style="width: 100%; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); padding: 12px;"></select>
+                            <select id="mapName" class="column-map form-control" required></select>
                         </div>
                         <div class="form-group">
                             <label>Precio *</label>
-                            <select id="mapPrice" class="column-map" required style="width: 100%; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); padding: 12px;"></select>
+                            <select id="mapPrice" class="column-map form-control" required></select>
                         </div>
                         <div class="form-group">
                             <label>Descripción</label>
-                            <select id="mapDescription" class="column-map" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); padding: 12px;"></select>
+                            <select id="mapDescription" class="column-map form-control"></select>
                         </div>
                         <div class="form-group">
                             <label>Categoría</label>
-                            <select id="mapCategory" class="column-map" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); padding: 12px;"></select>
+                            <select id="mapCategory" class="column-map form-control"></select>
                         </div>
                     </div>
 
@@ -983,38 +983,38 @@
             </div>
             
             <!-- Modal para agregar conexión -->
-            <div id="addConnModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; align-items: center; justify-content: center;">
-                <div class="form-card" style="width: 90%; max-width: 500px; background: var(--bg-card); position: relative; border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.25); padding: 24px;">
+            <div id="addConnModal" class="modal-overlay">
+                <div class="form-card modal-card" style="max-width: 500px;">
                     <h3 style="margin-top: 0; margin-bottom: 16px;">Conectar Nueva Cuenta</h3>
                     <form id="addConnForm" onsubmit="createNewConnection(event)">
                         <div class="form-group" style="margin-bottom: 16px;">
                             <label style="display: block; margin-bottom: 6px; font-weight: 600;">Modo de Conexión</label>
-                            <select id="newConnMode" onchange="toggleNewConnFields()" style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-body); color:var(--text-main);">
+                            <select id="newConnMode" class="form-control" onchange="toggleNewConnFields()">
                                 <option value="baileys">📱 Dispositivo (QR / Código de vinculación)</option>
                                 <option value="meta">🌐 Meta Cloud API (Oficial)</option>
                             </select>
                         </div>
                         <div class="form-group" id="newConnPhoneGroup" style="margin-bottom: 16px;">
                             <label style="display: block; margin-bottom: 6px; font-weight: 600;">Teléfono del bot (Ej: 59899123456)</label>
-                            <input type="text" id="newConnPhone" placeholder="598..." required style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-body); color:var(--text-main);">
+                            <input type="text" id="newConnPhone" class="form-control" placeholder="598..." required>
                         </div>
                         <div id="newConnMetaFields" style="display: none;">
                             <div class="form-group" style="margin-bottom: 16px;">
                                 <label style="display: block; margin-bottom: 6px; font-weight: 600;">Access Token (Permanente)</label>
-                                <input type="password" id="newConnMetaToken" placeholder="EAAB..." style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-body); color:var(--text-main);">
+                                <input type="password" id="newConnMetaToken" class="form-control" placeholder="EAAB...">
                             </div>
                             <div class="form-group" style="margin-bottom: 16px;">
                                 <label style="display: block; margin-bottom: 6px; font-weight: 600;">Phone Number ID</label>
-                                <input type="text" id="newConnMetaPhoneId" placeholder="104938..." style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-body); color:var(--text-main);">
+                                <input type="text" id="newConnMetaPhoneId" class="form-control" placeholder="104938...">
                             </div>
                             <div class="form-group" style="margin-bottom: 16px;">
                                 <label style="display: block; margin-bottom: 6px; font-weight: 600;">Verify Token (Para el Webhook)</label>
-                                <input type="text" id="newConnMetaVerifyToken" placeholder="MiTokenSecreto" style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-body); color:var(--text-main);">
+                                <input type="text" id="newConnMetaVerifyToken" class="form-control" placeholder="MiTokenSecreto">
                             </div>
                         </div>
-                        <div style="display: flex; gap: 12px; margin-top: 24px; justify-content: flex-end;">
-                            <button type="button" class="btn-secondary" onclick="hideAddConnectionModal()" style="padding: 10px 20px; border-radius: 8px; font-weight: 600; border: none; cursor: pointer;">Cancelar</button>
-                            <button type="submit" class="btn-primary" style="padding: 10px 20px; border-radius: 8px; font-weight: 600; border: none; cursor: pointer;">Crear y Configurar</button>
+                        <div class="flex-end gap-sm mt-md">
+                            <button type="button" class="btn-secondary" onclick="hideAddConnectionModal()">Cancelar</button>
+                            <button type="submit" class="btn-primary">Crear y Configurar</button>
                         </div>
                     </form>
                 </div>

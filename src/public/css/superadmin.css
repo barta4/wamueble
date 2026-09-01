@@ -39,6 +39,11 @@
     --saas-radius-lg: 18px;
     --saas-radius-xl: 24px;
     --saas-radius-full: 9999px;
+
+    /* Z-Index Layers */
+    --saas-z-sticky: 100;
+    --saas-z-dropdown: 1000;
+    --saas-z-modal: 9999;
 }
 
 [data-theme="dark"] {
@@ -90,7 +95,7 @@ body.admin-body {
     border-bottom: 1px solid var(--saas-border);
     position: sticky;
     top: 0;
-    z-index: 100;
+    z-index: var(--saas-z-sticky);
     box-shadow: var(--saas-shadow-sm);
 }
 
@@ -234,15 +239,9 @@ body.admin-body {
     border-radius: var(--saas-radius-lg);
     padding: 6px;
     display: flex;
+    flex-wrap: wrap;
     gap: 6px;
-    overflow-x: auto;
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE */
     box-shadow: var(--saas-shadow-sm);
-}
-
-.admin-tabs::-webkit-scrollbar {
-    display: none; /* Chrome, Safari, Opera */
 }
 
 .tab-btn {
@@ -790,7 +789,7 @@ textarea:focus {
     position: fixed;
     inset: 0;
     background: rgba(11, 20, 26, 0.7);
-    z-index: 1000;
+    z-index: var(--saas-z-modal);
     display: none;
     align-items: center;
     justify-content: center;
