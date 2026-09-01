@@ -29,36 +29,22 @@
     </header>
 
     <main class="admin-main">
-        <!-- Tabs -->
+        <!-- Tabs de Navegación Directa y Responsiva -->
         <div class="admin-tabs">
-            <div class="dropdown">
-                <button class="tab-btn active dropdown-toggle" id="catalog-dropdown-btn">📦 Catálogo ▼</button>
-                <div class="dropdown-menu">
-                    <button class="dropdown-item active" data-tab="products" onclick="switchTab('products')">📦 Productos</button>
-                    <% if (store && store.clinic_mode === 1) { %>
-                    <button class="dropdown-item" data-tab="services" onclick="switchTab('services')">⚕️ Servicios</button>
-                    <button class="dropdown-item" data-tab="doctors" onclick="switchTab('doctors')">👨‍⚕️ Doctores</button>
-                    <% } %>
-                    <% if (store && store.hostel_mode === 1) { %>
-                    <button class="dropdown-item" data-tab="rooms" onclick="switchTab('rooms')">🛏️ Habitaciones</button>
-                    <% } %>
-                </div>
-            </div>
-            <button class="tab-btn" data-tab="appointments" onclick="switchTab('appointments')" id="tab-appointments-btn" style="display: none;">📅 Citas</button>
-            <button class="tab-btn" data-tab="bookings" onclick="switchTab('bookings')" id="tab-bookings-btn" style="display: none;">🏨 Reservas</button>
+            <button class="tab-btn active" data-tab="products" onclick="switchTab('products')">📦 Productos</button>
+            <button class="tab-btn" data-tab="services" onclick="switchTab('services')" id="tab-services-btn" style="<%= (store && store.clinic_mode === 1) ? '' : 'display: none;' %>">⚕️ Servicios</button>
+            <button class="tab-btn" data-tab="doctors" onclick="switchTab('doctors')" id="tab-doctors-btn" style="<%= (store && store.clinic_mode === 1) ? '' : 'display: none;' %>">👨‍⚕️ Doctores</button>
+            <button class="tab-btn" data-tab="appointments" onclick="switchTab('appointments')" id="tab-appointments-btn" style="<%= (store && store.clinic_mode === 1) ? '' : 'display: none;' %>">📅 Citas</button>
+            <button class="tab-btn" data-tab="rooms" onclick="switchTab('rooms')" id="tab-rooms-btn" style="<%= (store && store.hostel_mode === 1) ? '' : 'display: none;' %>">🛏️ Habitaciones</button>
+            <button class="tab-btn" data-tab="bookings" onclick="switchTab('bookings')" id="tab-bookings-btn" style="<%= (store && store.hostel_mode === 1) ? '' : 'display: none;' %>">🏨 Reservas</button>
             <button class="tab-btn" data-tab="drivers" onclick="switchTab('drivers')">🛵 Repartidores</button>
             <button class="tab-btn" data-tab="chats" onclick="switchTab('chats')">💬 Chats <span class="badge-red" id="chatsHandoffBadge" style="display: none;">!</span></button>
             <button class="tab-btn" data-tab="history" onclick="switchTab('history')">📜 Historial</button>
             <button class="tab-btn" data-tab="customers" onclick="switchTab('customers')">👥 Clientes</button>
-            <div class="dropdown">
-                <button class="tab-btn dropdown-toggle">⚙️ Ajustes ▼</button>
-                <div class="dropdown-menu">
-                    <button class="dropdown-item" data-tab="settings" onclick="switchTab('settings')">⚙️ Ajustes Bot</button>
-                    <button class="dropdown-item" data-tab="excel" onclick="switchTab('excel')">📊 Excel</button>
-                    <button class="dropdown-item" data-tab="database" onclick="switchTab('database')">🗄️ BD Externa</button>
-                    <button class="dropdown-item" data-tab="whatsapp" onclick="switchTab('whatsapp')">📱 Conexión WhatsApp</button>
-                </div>
-            </div>
+            <button class="tab-btn" data-tab="settings" onclick="switchTab('settings')">⚙️ Ajustes Bot</button>
+            <button class="tab-btn" data-tab="whatsapp" onclick="switchTab('whatsapp')">📱 Conexión WhatsApp</button>
+            <button class="tab-btn" data-tab="excel" onclick="switchTab('excel')">📊 Excel</button>
+            <button class="tab-btn" data-tab="database" onclick="switchTab('database')">🗄️ BD Externa</button>
         </div>
 
         <!-- Tab: Productos -->
@@ -101,8 +87,7 @@
             </div>
         </section>
 
-        <!-- Tab: Doctores (solo en modo clínica) -->
-        <% if (store && store.clinic_mode === 1) { %>
+        <!-- Tab: Doctores (Modo Clínica) -->
         <section class="tab-content" id="tab-doctors">
             <div class="form-card">
                 <h3>➕ Agregar Profesional / Doctor</h3>
@@ -142,10 +127,8 @@
                 </div>
             </div>
         </section>
-        <% } %>
 
         <!-- Tab: Servicios (Modo Clínica) -->
-        <% if (store && store.clinic_mode === 1) { %>
         <section class="tab-content" id="tab-services">
             <div class="form-card">
                 <h3 id="formTitle-services">➕ Nuevo Servicio</h3>
@@ -179,7 +162,6 @@
                 <div class="loading">Cargando servicios...</div>
             </div>
         </section>
-        <% } %>
 
         <!-- Tab: Citas (Modo Clínica) -->
         <section class="tab-content" id="tab-appointments" style="flex-direction: column; height: calc(100vh - 100px); margin: -20px; padding: 20px; box-sizing: border-box;">

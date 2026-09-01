@@ -34,6 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadCategories();
     loadProducts();
     loadClinicMode();
+    loadHostelMode();
     initSockets();
     checkActiveHandoffs();
 });
@@ -44,13 +45,15 @@ async function loadCategories() {
         if (res.ok) {
             const store = await res.json();
             const select = document.getElementById('categoryOptions');
-            select.innerHTML = '';
-            const cats = store.categories_parsed || ["Pizzas", "Empanadas", "Bebidas", "Postres", "General"];
-            cats.forEach(c => {
-                const opt = document.createElement('option');
-                opt.value = c;
-                select.appendChild(opt);
-            });
+            if (select) {
+                select.innerHTML = '';
+                const cats = store.categories_parsed || ["Pizzas", "Empanadas", "Bebidas", "Postres", "General"];
+                cats.forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c;
+                    select.appendChild(opt);
+                });
+            }
         }
     } catch (e) {
         console.error("Error al cargar categorías", e);
@@ -67,23 +70,21 @@ function switchTab(tab) {
     const selectedTabBtn = document.querySelector(`[data-tab="${tab}"]`);
     if (selectedTabBtn) {
         selectedTabBtn.classList.add('active');
-        
-        // Si el tab seleccionado está dentro de un dropdown, iluminar también el botón padre
-        const parentDropdown = selectedTabBtn.closest('.dropdown');
-        if (parentDropdown) {
-            const toggleBtn = parentDropdown.querySelector('.dropdown-toggle');
-            if (toggleBtn) toggleBtn.classList.add('active');
-        }
     }
     
-    document.getElementById(`tab-${tab}`).classList.add('active');
+    const targetTabContent = document.getElementById(`tab-${tab}`);
+    if (targetTabContent) {
+        targetTabContent.classList.add('active');
+    }
     
     // Layout especial para chats
     const main = document.querySelector('.admin-main');
-    if (tab === 'chats') {
-        main.classList.add('chat-mode');
-    } else {
-        main.classList.remove('chat-mode');
+    if (main) {
+        if (tab === 'chats') {
+            main.classList.add('chat-mode');
+        } else {
+            main.classList.remove('chat-mode');
+        }
     }
 
     // Cargar datos según el tab
@@ -98,7 +99,7 @@ function switchTab(tab) {
     if (tab === 'history') loadHistory();
     if (tab === 'customers') loadCustomers();
     if (tab === 'whatsapp') { loadWhatsAppConfig(); loadBotStatus(); }
-    if (tab === 'settings') { loadStoreSettings(); loadClinicMode(); }
+    if (tab === 'settings') { loadStoreSettings(); loadClinicMode(); loadHostelMode(); }
 }
 
 // ─── Productos CRUD ────────────────────────────
@@ -2293,8 +2294,10 @@ async function loadClinicMode() {
             
             // Cargar configuración de horarios
             if (clinicModeEnabled) {
-                document.getElementById('storeWorkingHours').value = store.working_hours || '08:00-20:00';
-                document.getElementById('storeSlotDuration').value = store.slot_duration || 30;
+                const wh = document.getElementById('storeWorkingHours');
+                if (wh) wh.value = store.working_hours || '08:00-20:00';
+                const sd = document.getElementById('storeSlotDuration');
+                if (sd) sd.value = store.slot_duration || 30;
             }
         }
     } catch (e) {
@@ -2313,25 +2316,29 @@ function updateClinicModeUI() {
     const offBtn = document.getElementById('clinicModeOffBtn');
     const clinicSettings = document.getElementById('clinicSettingsCard');
     const appointmentsTab = document.getElementById('tab-appointments-btn');
+    const servicesTab = document.getElementById('tab-services-btn');
+    const doctorsTab = document.getElementById('tab-doctors-btn');
 
     if (clinicModeEnabled) {
-        badge.style.background = '#dbeafe';
-        badge.style.color = '#2563eb';
-        dot.style.background = '#2563eb';
-        text.textContent = 'Modo: Clínica';
-        onBtn.style.display = 'none';
-        offBtn.style.display = 'block';
-        clinicSettings.style.display = 'block';
-        appointmentsTab.style.display = 'block';
+        if (badge) { badge.style.background = '#dbeafe'; badge.style.color = '#2563eb'; }
+        if (dot) dot.style.background = '#2563eb';
+        if (text) text.textContent = 'Modo: Clínica';
+        if (onBtn) onBtn.style.display = 'none';
+        if (offBtn) offBtn.style.display = 'inline-flex';
+        if (clinicSettings) clinicSettings.style.display = 'block';
+        if (appointmentsTab) appointmentsTab.style.display = 'inline-flex';
+        if (servicesTab) servicesTab.style.display = 'inline-flex';
+        if (doctorsTab) doctorsTab.style.display = 'inline-flex';
     } else {
-        badge.style.background = '#dcfce7';
-        badge.style.color = '#16a34a';
-        dot.style.background = '#16a34a';
-        text.textContent = 'Modo: Tienda';
-        onBtn.style.display = 'block';
-        offBtn.style.display = 'none';
-        clinicSettings.style.display = 'none';
-        appointmentsTab.style.display = 'none';
+        if (badge) { badge.style.background = '#dcfce7'; badge.style.color = '#16a34a'; }
+        if (dot) dot.style.background = '#16a34a';
+        if (text) text.textContent = 'Modo: Tienda';
+        if (onBtn) onBtn.style.display = 'inline-flex';
+        if (offBtn) offBtn.style.display = 'none';
+        if (clinicSettings) clinicSettings.style.display = 'none';
+        if (appointmentsTab) appointmentsTab.style.display = 'none';
+        if (servicesTab) servicesTab.style.display = 'none';
+        if (doctorsTab) doctorsTab.style.display = 'none';
     }
 }
 
@@ -3048,27 +3055,30 @@ function updateHostelModeUI() {
     const onBtn = document.getElementById('hostelModeOnBtn');
     const offBtn = document.getElementById('hostelModeOffBtn');
     const bookingsTab = document.getElementById('tab-bookings-btn');
+    const roomsTab = document.getElementById('tab-rooms-btn');
 
     if (hostelModeEnabled) {
         if (badge) {
             badge.style.background = '#fef3c7';
             badge.style.color = '#d97706';
-            if (dot) dot.style.background = '#d97706';
-            if (text) text.textContent = 'Modo: Hostel';
         }
+        if (dot) dot.style.background = '#d97706';
+        if (text) text.textContent = 'Modo: Hostel';
         if (onBtn) onBtn.style.display = 'none';
-        if (offBtn) offBtn.style.display = 'block';
-        if (bookingsTab) bookingsTab.style.display = 'block';
+        if (offBtn) offBtn.style.display = 'inline-flex';
+        if (bookingsTab) bookingsTab.style.display = 'inline-flex';
+        if (roomsTab) roomsTab.style.display = 'inline-flex';
     } else {
         if (badge) {
             badge.style.background = '#dcfce7';
             badge.style.color = '#16a34a';
-            if (dot) dot.style.background = '#16a34a';
-            if (text) text.textContent = 'Modo: Tienda';
         }
-        if (onBtn) onBtn.style.display = 'block';
+        if (dot) dot.style.background = '#16a34a';
+        if (text) text.textContent = 'Modo: Tienda';
+        if (onBtn) onBtn.style.display = 'inline-flex';
         if (offBtn) offBtn.style.display = 'none';
         if (bookingsTab) bookingsTab.style.display = 'none';
+        if (roomsTab) roomsTab.style.display = 'none';
     }
 }
 
