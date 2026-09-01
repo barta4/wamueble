@@ -13,7 +13,11 @@ function verifySignature(req, res, next) {
     const appSecret = process.env.META_APP_SECRET;
 
     if (!appSecret) {
-        return next(); // Si no está configurado, continuar (modo desarrollo/testing)
+        if (process.env.NODE_ENV === 'production') {
+            console.error('❌ Error de seguridad crítico: META_APP_SECRET no está configurado en producción.');
+            return res.status(500).send('Server security configuration error');
+        }
+        return next(); // Permitido únicamente en modo desarrollo/testing local
     }
 
     if (!signature) {

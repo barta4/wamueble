@@ -6,17 +6,17 @@
     <title><%= title %></title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/css/style.css?v=4">
-    <link rel="stylesheet" href="/css/chat-pro.css?v=1">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css?v=6">
+    <link rel="stylesheet" href="/css/chat-pro.css?v=6">
     <script src="/js/theme-toggle.js"></script>
 </head>
 <body class="admin-body">
     <!-- Header -->
     <header class="admin-header">
         <div class="header-left">
-            <img src="/images/logo.png" alt="UruBot" class="logo-img-sm">
-            <h1 class="store-name"><%= store ? store.name : 'UruBot' %> — Admin</h1>
+            <img src="/images/logo.png" alt="Logo" class="logo-img-sm" onerror="this.style.display='none'">
+            <h1 class="store-name"><%= store ? store.name : 'WaBot' %> — Admin</h1>
         </div>
         <div class="header-right">
             <% if (user && user.role === 'superadmin') { %>

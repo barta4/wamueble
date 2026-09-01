@@ -6,137 +6,209 @@
     <title><%= title %></title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/css/style.css?v=5">
-    <link rel="stylesheet" href="/css/superadmin.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css?v=6">
+    <link rel="stylesheet" href="/css/superadmin.css?v=6">
     <script src="/js/theme-toggle.js"></script>
 </head>
 <body class="admin-body">
-    <!-- Header -->
-    <header class="admin-header">
-        <div class="header-left">
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <div style="background: rgba(255,255,255,0.15); padding: 8px 12px; border-radius: 8px; font-size: 1.2rem;">👑</div>
-                <div>
-                    <h1 style="margin: 0; font-size: 1.2rem; color: white;">WaBot SaaS — Panel Admin</h1>
-                    <span style="color: rgba(255,255,255,0.7); font-size: 0.8rem;">Gestión de la plataforma</span>
-                </div>
+    <!-- Header SaaS Premium -->
+    <header class="saas-header">
+        <div class="saas-brand">
+            <div class="saas-brand-icon">👑</div>
+            <div class="saas-brand-text">
+                <h1>
+                    WaBot SaaS 
+                    <span class="saas-version-badge">SuperAdmin</span>
+                </h1>
+                <p>Centro de Control y Monitoreo Global</p>
             </div>
         </div>
-        <div class="header-right">
-            <span style="color: rgba(255,255,255,0.8); font-size: 0.9rem;"><%= user.name %></span>
-            <a href="/dashboard" style="color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.9rem;">Dashboard</a>
-            <button id="themeToggleBtn" style="background: transparent; border: none; cursor: pointer; font-size: 1.15rem; color: white; padding: 4px 8px;" title="Cambiar Tema">🌙</button>
-            <a href="/logout" style="color: rgba(255,255,255,0.7); text-decoration: none;">Salir</a>
+        <div class="saas-header-actions">
+            <div class="saas-user-pill">
+                <div class="saas-user-avatar"><%= (user.name || 'A').charAt(0).toUpperCase() %></div>
+                <span><%= user.name %></span>
+            </div>
+            <a href="/dashboard" class="saas-header-link" title="Ir al Dashboard de Negocio">
+                <span>📊</span>
+                <span>Dashboard</span>
+            </a>
+            <a href="/admin" class="saas-header-link" title="Ir al Panel de Tienda">
+                <span>⚙️</span>
+                <span>Panel Tienda</span>
+            </a>
+            <button id="themeToggleBtn" class="saas-theme-btn" title="Cambiar Tema (Claro/Oscuro)">🌙</button>
+            <a href="/logout" class="saas-header-link saas-link-logout" title="Cerrar Sesión">
+                <span>🚪</span>
+                <span>Salir</span>
+            </a>
         </div>
     </header>
 
-    <main class="admin-main" style="max-width: 1400px; margin: 0 auto; padding: 24px;">
-        <!-- Tabs -->
-        <div class="admin-tabs">
-            <button class="tab-btn active" data-tab="dashboard" onclick="switchSuperAdminTab('dashboard')">📊 Dashboard</button>
-            <button class="tab-btn" data-tab="tenants" onclick="switchSuperAdminTab('tenants')">🏪 Tenants</button>
-            <button class="tab-btn" data-tab="users" onclick="switchSuperAdminTab('users')">👥 Usuarios</button>
-            <button class="tab-btn" data-tab="plans" onclick="switchSuperAdminTab('plans')">💰 Planes</button>
-            <button class="tab-btn" data-tab="ai-agents" onclick="switchSuperAdminTab('ai-agents')">🧠 Agentes IA</button>
-            <button class="tab-btn" data-tab="whatsapp" onclick="switchSuperAdminTab('whatsapp')">📱 WhatsApp</button>
-            <button class="tab-btn" data-tab="db-connections" onclick="switchSuperAdminTab('db-connections')">🗄️ BD Externas</button>
-            <button class="tab-btn" data-tab="audit" onclick="switchSuperAdminTab('audit')">📋 Auditoría</button>
+    <main class="saas-layout-container">
+        <!-- Barra de Navegación Segmentada y Responsive -->
+        <div class="saas-nav-container">
+            <div class="admin-tabs">
+                <button class="tab-btn active" data-tab="dashboard" onclick="switchSuperAdminTab('dashboard')">
+                    <span>📊</span> Dashboard
+                </button>
+                <button class="tab-btn" data-tab="tenants" onclick="switchSuperAdminTab('tenants')">
+                    <span>🏪</span> Tenants
+                </button>
+                <button class="tab-btn" data-tab="users" onclick="switchSuperAdminTab('users')">
+                    <span>👥</span> Usuarios
+                </button>
+                <button class="tab-btn" data-tab="plans" onclick="switchSuperAdminTab('plans')">
+                    <span>💰</span> Planes
+                </button>
+                <button class="tab-btn" data-tab="ai-agents" onclick="switchSuperAdminTab('ai-agents')">
+                    <span>🧠</span> Agentes IA
+                </button>
+                <button class="tab-btn" data-tab="whatsapp" onclick="switchSuperAdminTab('whatsapp')">
+                    <span>📱</span> WhatsApp
+                </button>
+                <button class="tab-btn" data-tab="db-connections" onclick="switchSuperAdminTab('db-connections')">
+                    <span>🗄️</span> BD Externas
+                </button>
+                <button class="tab-btn" data-tab="audit" onclick="switchSuperAdminTab('audit')">
+                    <span>📋</span> Auditoría
+                </button>
+            </div>
         </div>
 
         <!-- Tab: Dashboard -->
         <section class="tab-content active" id="tab-dashboard">
             <div id="dashboardContent">
-                <div style="text-align: center; padding: 40px; color: var(--text-secondary);">Cargando métricas...</div>
+                <div style="text-align: center; padding: 60px 20px; color: var(--saas-text-muted);">
+                    <div style="font-size: 2.5rem; margin-bottom: 12px; animation: pulse 1.5s infinite;">⏳</div>
+                    <div style="font-size: 1.1rem; font-weight: 600;">Cargando métricas de la plataforma...</div>
+                </div>
             </div>
         </section>
 
         <!-- Tab: Tenants -->
         <section class="tab-content" id="tab-tenants">
-            <div class="form-card">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                    <h3 style="margin: 0;">🏪 Gestión de Tenants</h3>
-                    <span id="tenantCount" style="color: var(--text-secondary);"></span>
+            <div class="saas-card">
+                <div class="saas-table-toolbar">
+                    <div class="saas-table-title-wrap">
+                        <h3>🏪 Gestión de Tenants</h3>
+                        <span id="tenantCount" class="saas-badge-counter">0 tenants</span>
+                    </div>
+                    <div class="saas-table-search">
+                        <span class="saas-search-icon">🔍</span>
+                        <input type="text" id="tenantSearchInput" class="saas-search-input" placeholder="Buscar tenant por nombre, teléfono o email..." oninput="filterTenantsList()">
+                    </div>
                 </div>
                 <div id="tenantsList">
-                    <div style="text-align: center; padding: 40px; color: var(--text-secondary);">Cargando tenants...</div>
+                    <div style="text-align: center; padding: 40px; color: var(--saas-text-muted);">Cargando tenants...</div>
                 </div>
             </div>
         </section>
 
         <!-- Tab: Usuarios -->
         <section class="tab-content" id="tab-users">
-            <div class="form-card">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                    <h3 style="margin: 0;">👥 Gestión de Usuarios</h3>
-                    <button class="btn-primary" onclick="showCreateUserModal()">+ Nuevo Usuario</button>
+            <div class="saas-card">
+                <div class="saas-table-toolbar">
+                    <div class="saas-table-title-wrap">
+                        <h3>👥 Gestión de Usuarios</h3>
+                        <span id="userCount" class="saas-badge-counter">0 usuarios</span>
+                    </div>
+                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <div class="saas-table-search">
+                            <span class="saas-search-icon">🔍</span>
+                            <input type="text" id="userSearchInput" class="saas-search-input" placeholder="Buscar por nombre o email..." oninput="filterUsersList()">
+                        </div>
+                        <button class="saas-btn-primary" onclick="showCreateUserModal()">
+                            <span>➕</span> Nuevo Usuario
+                        </button>
+                    </div>
                 </div>
                 <div id="usersList">
-                    <div style="text-align: center; padding: 40px; color: var(--text-secondary);">Cargando usuarios...</div>
+                    <div style="text-align: center; padding: 40px; color: var(--saas-text-muted);">Cargando usuarios...</div>
                 </div>
             </div>
         </section>
 
         <!-- Tab: Planes -->
         <section class="tab-content" id="tab-plans">
-            <div class="form-card">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                    <h3 style="margin: 0;">💰 Planes & Pricing</h3>
-                    <button class="btn-primary" onclick="showCreatePlanModal()">+ Nuevo Plan</button>
+            <div class="saas-card">
+                <div class="saas-table-toolbar">
+                    <div class="saas-table-title-wrap">
+                        <h3>💰 Planes & Pricing SaaS</h3>
+                    </div>
+                    <button class="saas-btn-primary" onclick="showCreatePlanModal()">
+                        <span>➕</span> Nuevo Plan
+                    </button>
                 </div>
                 <div id="plansList">
-                    <div style="text-align: center; padding: 40px; color: var(--text-secondary);">Cargando planes...</div>
+                    <div style="text-align: center; padding: 40px; color: var(--saas-text-muted);">Cargando planes...</div>
                 </div>
             </div>
         </section>
 
         <!-- Tab: Agentes IA -->
         <section class="tab-content" id="tab-ai-agents">
-            <div class="form-card">
-                <h3 style="margin: 0 0 16px 0;">🧠 Estado de Agentes IA</h3>
+            <div class="saas-card">
+                <div class="saas-table-toolbar">
+                    <div class="saas-table-title-wrap">
+                        <h3>🧠 Monitor de Agentes Cognitivos IA</h3>
+                    </div>
+                </div>
                 <div id="aiStatusList">
-                    <div style="text-align: center; padding: 40px; color: var(--text-secondary);">Cargando estado IA...</div>
+                    <div style="text-align: center; padding: 40px; color: var(--saas-text-muted);">Cargando estado IA...</div>
                 </div>
             </div>
         </section>
 
         <!-- Tab: WhatsApp -->
         <section class="tab-content" id="tab-whatsapp">
-            <div class="form-card">
-                <h3 style="margin: 0 0 16px 0;">📱 Estado de WhatsApp</h3>
+            <div class="saas-card">
+                <div class="saas-table-toolbar">
+                    <div class="saas-table-title-wrap">
+                        <h3>📱 Monitor de Instancias de WhatsApp</h3>
+                    </div>
+                </div>
                 <div id="whatsappStatusList">
-                    <div style="text-align: center; padding: 40px; color: var(--text-secondary);">Cargando estado WhatsApp...</div>
+                    <div style="text-align: center; padding: 40px; color: var(--saas-text-muted);">Cargando estado WhatsApp...</div>
                 </div>
             </div>
         </section>
 
         <!-- Tab: BD Externas -->
         <section class="tab-content" id="tab-db-connections">
-            <div class="form-card">
-                <h3 style="margin: 0 0 16px 0;">🗄️ Conexiones de BD Externas</h3>
+            <div class="saas-card">
+                <div class="saas-table-toolbar">
+                    <div class="saas-table-title-wrap">
+                        <h3>🗄️ Conexiones a Bases de Datos Externas</h3>
+                    </div>
+                </div>
                 <div id="dbConnectionsList">
-                    <div style="text-align: center; padding: 40px; color: var(--text-secondary);">Cargando conexiones...</div>
+                    <div style="text-align: center; padding: 40px; color: var(--saas-text-muted);">Cargando conexiones...</div>
                 </div>
             </div>
         </section>
 
         <!-- Tab: Auditoría -->
         <section class="tab-content" id="tab-audit">
-            <div class="form-card">
-                <h3 style="margin: 0 0 16px 0;">📋 Log de Auditoría</h3>
-                <div id="auditLogList">
-                    <div style="text-align: center; padding: 40px; color: var(--text-secondary);">Cargando auditoría...</div>
+            <div class="saas-card">
+                <div class="saas-table-toolbar">
+                    <div class="saas-table-title-wrap">
+                        <h3>📋 Log Global de Auditoría</h3>
+                    </div>
                 </div>
-                <div id="auditPagination" style="display: flex; justify-content: center; gap: 8px; margin-top: 16px;"></div>
+                <div id="auditLogList">
+                    <div style="text-align: center; padding: 40px; color: var(--saas-text-muted);">Cargando auditoría...</div>
+                </div>
+                <div id="auditPagination" style="display: flex; justify-content: center; gap: 8px; margin-top: 20px;"></div>
             </div>
         </section>
     </main>
 
     <!-- Modal Container -->
-    <div id="modalOverlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
-        <div id="modalContent" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; padding: 24px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto;"></div>
+    <div id="modalOverlay" onclick="if(event.target === this) closeModal()">
+        <div id="modalContent"></div>
     </div>
 
-    <script src="/js/superadmin.js"></script>
+    <script src="/js/superadmin.js?v=6"></script>
 </body>
 </html>

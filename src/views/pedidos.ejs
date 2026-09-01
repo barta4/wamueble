@@ -6,17 +6,20 @@
     <title><%= title %></title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css?v=6">
+    <script src="/js/theme-toggle.js"></script>
 </head>
 <body class="kitchen-body">
     <!-- Header -->
     <header class="kitchen-header">
         <div class="header-left">
-            <img src="/images/logo.png" alt="UruBot" class="logo-img-sm">
-            <h1 class="store-name"><%= store ? store.name : 'UruBot' %></h1>
+            <img src="/images/logo.png" alt="Logo" class="logo-img-sm" onerror="this.style.display='none'">
+            <h1 class="store-name"><%= store ? store.name : 'WaBot' %> — TV Cocina</h1>
         </div>
         <div class="header-right">
+            <a href="/admin" class="nav-link" style="display: inline-flex; align-items: center; gap: 6px;">⚙️ Panel Admin</a>
+            <button id="themeToggleBtn" class="nav-link" style="background: transparent; border: none; cursor: pointer; font-size: 1.15rem; color: var(--text-primary); padding: 6px 12px; display: inline-flex; align-items: center; justify-content: center;" title="Cambiar Tema">🌙</button>
             <div class="connection-status" id="connectionStatus">
                 <span class="status-dot"></span>
                 <span class="status-text">Conectando...</span>

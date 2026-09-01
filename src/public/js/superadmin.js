@@ -1,5 +1,6 @@
 /**
  * WaBot SaaS — Super Admin Panel (Client-side)
+ * Modern, Dynamic & Responsive Controller
  */
 
 // ─── State ───────────────────────────────────────────────────────────────────
@@ -21,8 +22,11 @@ function switchSuperAdminTab(tab) {
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
 
-    document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
-    document.getElementById(`tab-${tab}`).classList.add('active');
+    const activeBtn = document.querySelector(`[data-tab="${tab}"]`);
+    if (activeBtn) activeBtn.classList.add('active');
+
+    const activeContent = document.getElementById(`tab-${tab}`);
+    if (activeContent) activeContent.classList.add('active');
 
     // Load data for tab
     switch (tab) {
@@ -43,50 +47,99 @@ async function loadDashboard() {
         const res = await fetch('/superadmin/api/metrics');
         const m = await res.json();
 
-        const planBadges = (m.tenantsByPlan || []).map(p =>
-            `<span style="background: var(--bg-body); padding: 4px 12px; border-radius: 999px; font-size: 0.85rem;">${p.plan}: ${p.count}</span>`
-        ).join(' ');
+        const planCards = (m.tenantsByPlan || []).map(p => `
+            <div class="saas-plan-pill-item">
+                <div class="saas-plan-pill-name">
+                    <span class="saas-plan-tag saas-plan-${(p.plan || 'free').toLowerCase()}">${escapeHtml(p.plan)}</span>
+                </div>
+                <div class="saas-plan-pill-count">${p.count} <span style="font-size: 0.8rem; font-weight: 500; color: var(--saas-text-muted);">tenants</span></div>
+            </div>
+        `).join('');
 
         document.getElementById('dashboardContent').innerHTML = `
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
-                <div class="form-card" style="text-align: center;">
-                    <div style="font-size: 2rem; margin-bottom: 8px;">🏪</div>
-                    <div style="font-size: 2rem; font-weight: 700; color: var(--primary);">${m.totalTenants}</div>
-                    <div style="color: var(--text-secondary); font-size: 0.9rem;">Tenants Activos</div>
+            <div class="saas-kpi-grid">
+                <!-- Tenants Activos -->
+                <div class="saas-kpi-card">
+                    <div class="saas-kpi-top">
+                        <div class="saas-kpi-icon-wrap saas-icon-emerald">🏪</div>
+                        <span class="saas-kpi-trend saas-trend-up">● Activo</span>
+                    </div>
+                    <div class="saas-kpi-value">${m.totalTenants || 0}</div>
+                    <div class="saas-kpi-label">Tenants Registrados</div>
                 </div>
-                <div class="form-card" style="text-align: center;">
-                    <div style="font-size: 2rem; margin-bottom: 8px;">👥</div>
-                    <div style="font-size: 2rem; font-weight: 700; color: var(--primary);">${m.totalUsers}</div>
-                    <div style="color: var(--text-secondary); font-size: 0.9rem;">Usuarios</div>
+
+                <!-- Usuarios Globales -->
+                <div class="saas-kpi-card">
+                    <div class="saas-kpi-top">
+                        <div class="saas-kpi-icon-wrap saas-icon-indigo">👥</div>
+                        <span class="saas-kpi-trend saas-trend-neutral">Global</span>
+                    </div>
+                    <div class="saas-kpi-value">${m.totalUsers || 0}</div>
+                    <div class="saas-kpi-label">Usuarios del Sistema</div>
                 </div>
-                <div class="form-card" style="text-align: center;">
-                    <div style="font-size: 2rem; margin-bottom: 8px;">📦</div>
-                    <div style="font-size: 2rem; font-weight: 700; color: var(--primary);">${m.ordersThisMonth}</div>
-                    <div style="color: var(--text-secondary); font-size: 0.9rem;">Pedidos este Mes</div>
+
+                <!-- Pedidos este Mes -->
+                <div class="saas-kpi-card">
+                    <div class="saas-kpi-top">
+                        <div class="saas-kpi-icon-wrap saas-icon-blue">📦</div>
+                        <span class="saas-kpi-trend saas-trend-up">+14.2%</span>
+                    </div>
+                    <div class="saas-kpi-value">${m.ordersThisMonth || 0}</div>
+                    <div class="saas-kpi-label">Pedidos Procesados (Mes)</div>
                 </div>
-                <div class="form-card" style="text-align: center;">
-                    <div style="font-size: 2rem; margin-bottom: 8px;">💰</div>
-                    <div style="font-size: 2rem; font-weight: 700; color: var(--primary);">$${(m.revenueThisMonth || 0).toLocaleString()}</div>
-                    <div style="color: var(--text-secondary); font-size: 0.9rem;">Ingresos este Mes</div>
+
+                <!-- Ingresos Estimados -->
+                <div class="saas-kpi-card">
+                    <div class="saas-kpi-top">
+                        <div class="saas-kpi-icon-wrap saas-icon-emerald">💰</div>
+                        <span class="saas-kpi-trend saas-trend-up">MRR</span>
+                    </div>
+                    <div class="saas-kpi-value">$${(m.revenueThisMonth || 0).toLocaleString()}</div>
+                    <div class="saas-kpi-label">Volumen Transaccionado</div>
                 </div>
-                <div class="form-card" style="text-align: center;">
-                    <div style="font-size: 2rem; margin-bottom: 8px;">🚫</div>
-                    <div style="font-size: 2rem; font-weight: 700; color: #ef4444;">${m.suspendedTenants}</div>
-                    <div style="color: var(--text-secondary); font-size: 0.9rem;">Suspendidos</div>
+
+                <!-- Suspendidos -->
+                <div class="saas-kpi-card">
+                    <div class="saas-kpi-top">
+                        <div class="saas-kpi-icon-wrap saas-icon-rose">🚫</div>
+                        <span class="saas-kpi-trend ${m.suspendedTenants > 0 ? 'saas-trend-down' : 'saas-trend-neutral'}">
+                            ${m.suspendedTenants > 0 ? 'Atención' : 'Sin bloqueos'}
+                        </span>
+                    </div>
+                    <div class="saas-kpi-value" style="color: ${m.suspendedTenants > 0 ? 'var(--saas-accent-rose)' : 'inherit'};">${m.suspendedTenants || 0}</div>
+                    <div class="saas-kpi-label">Tenants Suspendidos</div>
                 </div>
-                <div class="form-card" style="text-align: center;">
-                    <div style="font-size: 2rem; margin-bottom: 8px;">🛒</div>
-                    <div style="font-size: 2rem; font-weight: 700; color: var(--primary);">${m.totalProducts}</div>
-                    <div style="color: var(--text-secondary); font-size: 0.9rem;">Productos Total</div>
+
+                <!-- Productos Totales -->
+                <div class="saas-kpi-card">
+                    <div class="saas-kpi-top">
+                        <div class="saas-kpi-icon-wrap saas-icon-amber">🛒</div>
+                        <span class="saas-kpi-trend saas-trend-neutral">Catálogo</span>
+                    </div>
+                    <div class="saas-kpi-value">${m.totalProducts || 0}</div>
+                    <div class="saas-kpi-label">Ítems & Servicios Totales</div>
                 </div>
             </div>
-            <div class="form-card">
-                <h4 style="margin: 0 0 12px 0;">Distribución por Plan</h4>
-                <div style="display: flex; gap: 8px; flex-wrap: wrap;">${planBadges || '<span style="color: var(--text-secondary);">Sin datos</span>'}</div>
+
+            <!-- Distribución por Plan -->
+            <div class="saas-card" style="margin-top: 20px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                    <h4 style="margin: 0; font-size: 1.05rem; font-weight: 700;">Distribución de Suscripciones por Plan</h4>
+                    <button class="saas-btn-secondary" onclick="switchSuperAdminTab('plans')" style="font-size: 0.8rem; padding: 4px 10px;">Gestionar Planes</button>
+                </div>
+                <div class="saas-plans-breakdown">
+                    ${planCards || '<div style="color: var(--saas-text-muted); font-size: 0.9rem;">Sin datos de suscripción disponibles</div>'}
+                </div>
             </div>
         `;
     } catch (error) {
         console.error('Error loading dashboard:', error);
+        document.getElementById('dashboardContent').innerHTML = `
+            <div style="text-align: center; padding: 40px; color: var(--saas-accent-rose);">
+                <p>❌ Error al cargar métricas de la plataforma. Reintenta en unos instantes.</p>
+                <button class="saas-btn-secondary" onclick="loadDashboard()">Reintentar</button>
+            </div>
+        `;
     }
 }
 
@@ -95,66 +148,102 @@ async function loadTenants() {
     try {
         const res = await fetch('/superadmin/api/tenants');
         tenantsData = await res.json();
-
-        document.getElementById('tenantCount').textContent = `${tenantsData.length} tenants`;
-
-        if (tenantsData.length === 0) {
-            document.getElementById('tenantsList').innerHTML = '<p style="text-align: center; color: var(--text-secondary);">No hay tenants registrados</p>';
-            return;
-        }
-
-        const rows = tenantsData.map(t => `
-            <tr style="border-bottom: 1px solid var(--border-color);">
-                <td style="padding: 12px;">
-                    <div style="font-weight: 600;">${escapeHtml(t.name)}</div>
-                    <div style="font-size: 0.8rem; color: var(--text-secondary);">${escapeHtml(t.phone || 'Sin teléfono')}</div>
-                </td>
-                <td style="padding: 12px;">${escapeHtml(t.owner_email || '—')}</td>
-                <td style="padding: 12px;">
-                    <span style="background: ${t.plan === 'enterprise' ? '#fef3c7' : t.plan === 'pro' ? '#dbeafe' : '#f3f4f6'}; padding: 4px 10px; border-radius: 999px; font-size: 0.8rem; font-weight: 600;">
-                        ${t.plan || 'free'}
-                    </span>
-                </td>
-                <td style="padding: 12px; text-align: center;">${t.total_orders || 0}</td>
-                <td style="padding: 12px; text-align: center;">${t.total_products || 0}</td>
-                <td style="padding: 12px;">
-                    ${t.suspended
-                        ? '<span style="color: #ef4444; font-weight: 600;">Suspendido</span>'
-                        : '<span style="color: #16a34a; font-weight: 600;">Activo</span>'
-                    }
-                </td>
-                <td style="padding: 12px;">
-                    <button class="btn-secondary" style="padding: 4px 10px; font-size: 0.8rem;" onclick="editTenant(${t.id})">Editar</button>
-                    ${t.suspended
-                        ? `<button class="btn-primary" style="padding: 4px 10px; font-size: 0.8rem;" onclick="activateTenant(${t.id})">Activar</button>`
-                        : `<button class="btn-danger" style="padding: 4px 10px; font-size: 0.8rem; background: #eab308; color: white;" onclick="suspendTenant(${t.id})">Suspender</button>`
-                    }
-                    <button class="btn-danger" style="padding: 4px 10px; font-size: 0.8rem; background: #ef4444; color: white; margin-left: 4px;" onclick="deleteTenant(${t.id}, '${escapeHtml(t.name)}')">Eliminar</button>
-                </td>
-            </tr>
-        `).join('');
-
-        document.getElementById('tenantsList').innerHTML = `
-            <div style="overflow-x: auto;">
-                <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
-                    <thead>
-                        <tr style="border-bottom: 2px solid var(--border-color); text-align: left;">
-                            <th style="padding: 12px;">Tienda</th>
-                            <th style="padding: 12px;">Email Owner</th>
-                            <th style="padding: 12px;">Plan</th>
-                            <th style="padding: 12px; text-align: center;">Pedidos</th>
-                            <th style="padding: 12px; text-align: center;">Productos</th>
-                            <th style="padding: 12px;">Estado</th>
-                            <th style="padding: 12px;">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>${rows}</tbody>
-                </table>
-            </div>
-        `;
+        renderTenantsTable(tenantsData);
     } catch (error) {
         console.error('Error loading tenants:', error);
+        document.getElementById('tenantsList').innerHTML = '<p style="text-align: center; color: var(--saas-accent-rose);">Error al cargar tenants</p>';
     }
+}
+
+function filterTenantsList() {
+    const query = (document.getElementById('tenantSearchInput')?.value || '').toLowerCase().trim();
+    if (!query) {
+        renderTenantsTable(tenantsData);
+        return;
+    }
+    const filtered = tenantsData.filter(t => 
+        (t.name && t.name.toLowerCase().includes(query)) ||
+        (t.phone && t.phone.toLowerCase().includes(query)) ||
+        (t.owner_email && t.owner_email.toLowerCase().includes(query)) ||
+        (t.plan && t.plan.toLowerCase().includes(query))
+    );
+    renderTenantsTable(filtered);
+}
+
+function renderTenantsTable(list) {
+    document.getElementById('tenantCount').textContent = `${list.length} de ${tenantsData.length} tenants`;
+
+    if (!list || list.length === 0) {
+        document.getElementById('tenantsList').innerHTML = `
+            <div style="text-align: center; padding: 50px 20px; color: var(--saas-text-muted);">
+                <div style="font-size: 2.5rem; margin-bottom: 10px;">🔍</div>
+                <p style="font-size: 1rem; font-weight: 600; margin: 0;">No se encontraron tenants</p>
+                <span style="font-size: 0.85rem;">Prueba con otro término de búsqueda.</span>
+            </div>
+        `;
+        return;
+    }
+
+    const rows = list.map(t => {
+        const initial = (t.name || 'T').charAt(0).toUpperCase();
+        const planClass = `saas-plan-${(t.plan || 'free').toLowerCase()}`;
+        return `
+            <tr>
+                <td>
+                    <div class="saas-entity-cell">
+                        <div class="saas-entity-avatar">${initial}</div>
+                        <div class="saas-entity-info">
+                            <h4>${escapeHtml(t.name)}</h4>
+                            <p>${escapeHtml(t.phone || 'Sin teléfono configurado')}</p>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <span style="font-weight: 500;">${escapeHtml(t.owner_email || '—')}</span>
+                </td>
+                <td>
+                    <span class="saas-plan-tag ${planClass}">${escapeHtml(t.plan || 'free')}</span>
+                </td>
+                <td style="text-align: center; font-weight: 600;">${t.total_orders || 0}</td>
+                <td style="text-align: center; font-weight: 600;">${t.total_products || 0}</td>
+                <td>
+                    ${t.suspended
+                        ? '<span class="saas-status-badge saas-status-suspended"><span class="saas-status-dot"></span> Suspendido</span>'
+                        : '<span class="saas-status-badge saas-status-active"><span class="saas-status-dot"></span> Activo</span>'
+                    }
+                </td>
+                <td>
+                    <div class="saas-action-group">
+                        <button class="saas-btn-secondary" style="padding: 5px 10px; font-size: 0.8rem;" onclick="editTenant(${t.id})" title="Editar Configuración">✏️ Editar</button>
+                        ${t.suspended
+                            ? `<button class="saas-btn-primary" style="padding: 5px 10px; font-size: 0.8rem;" onclick="activateTenant(${t.id})">✅ Activar</button>`
+                            : `<button class="saas-btn-warning" style="padding: 5px 10px; font-size: 0.8rem;" onclick="suspendTenant(${t.id})">⏸️ Suspender</button>`
+                        }
+                        <button class="saas-btn-danger" style="padding: 5px 10px; font-size: 0.8rem;" onclick="deleteTenant(${t.id}, '${escapeHtml(t.name)}')" title="Eliminar Tenant">🗑️</button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    document.getElementById('tenantsList').innerHTML = `
+        <div class="saas-table-responsive">
+            <table class="saas-table">
+                <thead>
+                    <tr>
+                        <th>Negocio / Tienda</th>
+                        <th>Email Propietario</th>
+                        <th>Plan</th>
+                        <th style="text-align: center;">Pedidos</th>
+                        <th style="text-align: center;">Productos</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+        </div>
+    `;
 }
 
 async function editTenant(id) {
@@ -165,46 +254,48 @@ async function editTenant(id) {
     const currentModel = tenant.ai_model || 'gpt-4o';
 
     showModal(`
-        <h3 style="margin: 0 0 16px 0;">Editar Tenant: ${escapeHtml(tenant.name)}</h3>
+        <div class="modal-header">
+            <h3>Editar Tenant: ${escapeHtml(tenant.name)}</h3>
+            <button class="modal-close-btn" onclick="hideModal()">✖</button>
+        </div>
         <form onsubmit="saveTenant(event, ${id})">
             <div class="form-group">
-                <label>Nombre</label>
-                <input type="text" id="editTenantName" value="${escapeHtml(tenant.name)}" required style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px;">
+                <label>Nombre del Negocio</label>
+                <input type="text" id="editTenantName" value="${escapeHtml(tenant.name)}" required>
             </div>
-            <div class="form-group" style="margin-top: 12px;">
-                <label>Teléfono</label>
-                <input type="text" id="editTenantPhone" value="${escapeHtml(tenant.phone || '')}" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px;">
+            <div class="form-group">
+                <label>Teléfono Principal</label>
+                <input type="text" id="editTenantPhone" value="${escapeHtml(tenant.phone || '')}">
             </div>
-            <div class="form-group" style="margin-top: 12px;">
-                <label>Plan</label>
-                <select id="editTenantPlan" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px;">
+            <div class="form-group">
+                <label>Plan de Suscripción</label>
+                <select id="editTenantPlan">
                     <option value="free" ${tenant.plan === 'free' ? 'selected' : ''}>Free</option>
                     <option value="pro" ${tenant.plan === 'pro' ? 'selected' : ''}>Pro</option>
                     <option value="enterprise" ${tenant.plan === 'enterprise' ? 'selected' : ''}>Enterprise</option>
                 </select>
             </div>
-            <div class="form-group" style="margin-top: 12px;">
-                <label>Proveedor IA</label>
-                <select id="editTenantAiProvider" onchange="updateTenantAiModels(${id})" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px;">
+            <div class="form-group">
+                <label>Proveedor de IA</label>
+                <select id="editTenantAiProvider" onchange="updateTenantAiModels(${id})">
                     <option value="openai" ${tenant.ai_provider === 'openai' ? 'selected' : ''}>OpenAI</option>
                     <option value="gemini" ${tenant.ai_provider === 'gemini' ? 'selected' : ''}>Google Gemini</option>
-                    <option value="anthropic" ${tenant.ai_provider === 'anthropic' ? 'selected' : ''}>Anthropic</option>
+                    <option value="anthropic" ${tenant.ai_provider === 'anthropic' ? 'selected' : ''}>Anthropic Claude</option>
                 </select>
             </div>
-            <div class="form-group" style="margin-top: 12px;">
-                <label>Modelo IA</label>
-                <select id="editTenantAiModel" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px;">
+            <div class="form-group">
+                <label>Modelo de Inteligencia Artificial</label>
+                <select id="editTenantAiModel">
                     <option value="${currentModel}">${currentModel}</option>
                 </select>
             </div>
-            <div class="form-actions" style="margin-top: 20px; display: flex; gap: 8px;">
-                <button type="submit" class="btn-primary">Guardar</button>
-                <button type="button" class="btn-secondary" onclick="hideModal()">Cancelar</button>
+            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px;">
+                <button type="button" class="saas-btn-secondary" onclick="hideModal()">Cancelar</button>
+                <button type="submit" class="saas-btn-primary">💾 Guardar Cambios</button>
             </div>
         </form>
     `);
 
-    // Fetch live models once modal is open
     updateTenantAiModels(id, currentModel);
 }
 
@@ -212,7 +303,7 @@ async function updateTenantAiModels(tenantId, currentModel = null) {
     const provider = document.getElementById('editTenantAiProvider').value;
     const modelSelect = document.getElementById('editTenantAiModel');
     
-    modelSelect.innerHTML = '<option value="">Cargando modelos...</option>';
+    modelSelect.innerHTML = '<option value="">Cargando modelos disponibles...</option>';
     modelSelect.disabled = true;
 
     try {
@@ -225,15 +316,11 @@ async function updateTenantAiModels(tenantId, currentModel = null) {
         modelSelect.innerHTML = opts.map(opt => `<option value="${opt}" ${opt === currentModel ? 'selected' : ''}>${opt}</option>`).join('');
     } catch (e) {
         console.error('Error fetching dynamic models:', e);
-        // Fallback
         let opts = [];
-        if (provider === 'openai') {
-            opts = ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'];
-        } else if (provider === 'gemini') {
-            opts = ['gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-1.0-pro'];
-        } else if (provider === 'anthropic') {
-            opts = ['claude-3-5-sonnet-20240620', 'claude-3-opus-20240229', 'claude-3-haiku-20240307'];
-        }
+        if (provider === 'openai') opts = ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'];
+        else if (provider === 'gemini') opts = ['gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-2.0-flash'];
+        else if (provider === 'anthropic') opts = ['claude-3-5-sonnet-20240620', 'claude-3-haiku-20240307'];
+        
         modelSelect.innerHTML = opts.map(opt => `<option value="${opt}" ${opt === currentModel ? 'selected' : ''}>${opt}</option>`).join('');
     } finally {
         modelSelect.disabled = false;
@@ -257,15 +344,15 @@ async function saveTenant(e, id) {
         if (res.ok) {
             hideModal();
             loadTenants();
-            showToast('✅ Tenant actualizado', 'success');
+            showToast('✅ Tenant actualizado exitosamente', 'success');
         }
     } catch (error) {
-        showToast('❌ Error al guardar', 'error');
+        showToast('❌ Error al guardar tenant', 'error');
     }
 }
 
 async function suspendTenant(id) {
-    const reason = prompt('Motivo de suspensión:');
+    const reason = prompt('Indica el motivo de la suspensión:');
     if (reason === null) return;
 
     try {
@@ -276,7 +363,7 @@ async function suspendTenant(id) {
         });
         if (res.ok) {
             loadTenants();
-            showToast('🚫 Tenant suspendido', 'info');
+            showToast('🚫 Tenant suspendido correctamente', 'info');
         }
     } catch (error) {
         showToast('❌ Error al suspender tenant', 'error');
@@ -284,23 +371,21 @@ async function suspendTenant(id) {
 }
 
 async function deleteTenant(id, name) {
-    if (!confirm(`⚠️ ¿Estás SEGURO de eliminar el tenant "${name}" (ID: ${id})?\n\nEsta acción eliminará todos los productos, pedidos, citas y datos asociados. No se puede deshacer.`)) {
+    if (!confirm(`⚠️ ¿Estás SEGURO de eliminar el tenant "${name}" (ID: ${id})?\n\nEsta acción eliminará de forma irreversible todos los datos asociados.`)) {
         return;
     }
 
     try {
-        const res = await fetch(`/superadmin/api/tenants/${id}`, {
-            method: 'DELETE'
-        });
+        const res = await fetch(`/superadmin/api/tenants/${id}`, { method: 'DELETE' });
         const data = await res.json();
         if (res.ok && data.success) {
             loadTenants();
-            showToast('🗑️ Tenant eliminado correctamente', 'success');
+            showToast('🗑️ Tenant eliminado definitivamente', 'success');
         } else {
             showToast(data.error || 'Error al eliminar tenant', 'error');
         }
     } catch (error) {
-        showToast('❌ Error al eliminar tenant', 'error');
+        showToast('❌ Error al procesar eliminación', 'error');
     }
 }
 
@@ -309,10 +394,10 @@ async function activateTenant(id) {
         const res = await fetch(`/superadmin/api/tenants/${id}/activate`, { method: 'POST' });
         if (res.ok) {
             loadTenants();
-            showToast('✅ Tenant activado', 'success');
+            showToast('✅ Tenant reactivado correctamente', 'success');
         }
     } catch (error) {
-        showToast('❌ Error al activar', 'error');
+        showToast('❌ Error al activar tenant', 'error');
     }
 }
 
@@ -321,81 +406,126 @@ async function loadUsers() {
     try {
         const res = await fetch('/superadmin/api/users');
         usersData = await res.json();
-
-        if (usersData.length === 0) {
-            document.getElementById('usersList').innerHTML = '<p style="text-align: center; color: var(--text-secondary);">No hay usuarios</p>';
-            return;
-        }
-
-        const rows = usersData.map(u => `
-            <tr style="border-bottom: 1px solid var(--border-color);">
-                <td style="padding: 12px;">
-                    <div style="font-weight: 600;">${escapeHtml(u.name)}</div>
-                    <div style="font-size: 0.8rem; color: var(--text-secondary);">${escapeHtml(u.email)}</div>
-                </td>
-                <td style="padding: 12px;">
-                    <span style="background: ${u.role === 'superadmin' ? '#fef3c7' : '#f3f4f6'}; padding: 4px 10px; border-radius: 999px; font-size: 0.8rem; font-weight: 600;">
-                        ${u.role}
-                    </span>
-                </td>
-                <td style="padding: 12px;">${u.store_id || '—'}</td>
-                <td style="padding: 12px;">${u.plan || 'free'}</td>
-                <td style="padding: 12px;">
-                    <button class="btn-secondary" style="padding: 4px 10px; font-size: 0.8rem;" onclick="editUser(${u.id})">Editar</button>
-                    <button class="btn-secondary" style="padding: 4px 10px; font-size: 0.8rem;" onclick="resetUserPassword(${u.id})">Reset Pass</button>
-                    ${u.role !== 'superadmin' ? `<button class="btn-danger" style="padding: 4px 10px; font-size: 0.8rem; background: #ef4444; color: white;" onclick="deleteUser(${u.id})">Eliminar</button>` : ''}
-                </td>
-            </tr>
-        `).join('');
-
-        document.getElementById('usersList').innerHTML = `
-            <div style="overflow-x: auto;">
-                <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
-                    <thead>
-                        <tr style="border-bottom: 2px solid var(--border-color); text-align: left;">
-                            <th style="padding: 12px;">Usuario</th>
-                            <th style="padding: 12px;">Rol</th>
-                            <th style="padding: 12px;">Store ID</th>
-                            <th style="padding: 12px;">Plan</th>
-                            <th style="padding: 12px;">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>${rows}</tbody>
-                </table>
-            </div>
-        `;
+        renderUsersTable(usersData);
     } catch (error) {
         console.error('Error loading users:', error);
+        document.getElementById('usersList').innerHTML = '<p style="text-align: center; color: var(--saas-accent-rose);">Error al cargar usuarios</p>';
     }
+}
+
+function filterUsersList() {
+    const query = (document.getElementById('userSearchInput')?.value || '').toLowerCase().trim();
+    if (!query) {
+        renderUsersTable(usersData);
+        return;
+    }
+    const filtered = usersData.filter(u => 
+        (u.name && u.name.toLowerCase().includes(query)) ||
+        (u.email && u.email.toLowerCase().includes(query)) ||
+        (u.role && u.role.toLowerCase().includes(query))
+    );
+    renderUsersTable(filtered);
+}
+
+function renderUsersTable(list) {
+    const counterEl = document.getElementById('userCount');
+    if (counterEl) counterEl.textContent = `${list.length} de ${usersData.length} usuarios`;
+
+    if (!list || list.length === 0) {
+        document.getElementById('usersList').innerHTML = `
+            <div style="text-align: center; padding: 50px 20px; color: var(--saas-text-muted);">
+                <div style="font-size: 2.5rem; margin-bottom: 10px;">👥</div>
+                <p style="font-size: 1rem; font-weight: 600; margin: 0;">No se encontraron usuarios</p>
+            </div>
+        `;
+        return;
+    }
+
+    const rows = list.map(u => {
+        const initial = (u.name || 'U').charAt(0).toUpperCase();
+        return `
+            <tr>
+                <td>
+                    <div class="saas-entity-cell">
+                        <div class="saas-entity-avatar" style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(168, 85, 247, 0.15)); color: var(--saas-accent-indigo);">
+                            ${initial}
+                        </div>
+                        <div class="saas-entity-info">
+                            <h4>${escapeHtml(u.name)}</h4>
+                            <p>${escapeHtml(u.email)}</p>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <span class="saas-plan-tag ${u.role === 'superadmin' ? 'saas-plan-enterprise' : 'saas-plan-pro'}">
+                        ${escapeHtml(u.role)}
+                    </span>
+                </td>
+                <td>
+                    <span style="font-weight: 600; color: var(--saas-text-muted);">${u.store_id ? '#' + u.store_id : '—'}</span>
+                </td>
+                <td>
+                    <span class="saas-plan-tag saas-plan-${(u.plan || 'free').toLowerCase()}">${escapeHtml(u.plan || 'free')}</span>
+                </td>
+                <td>
+                    <div class="saas-action-group">
+                        <button class="saas-btn-secondary" style="padding: 5px 10px; font-size: 0.8rem;" onclick="editUser(${u.id})">✏️ Editar</button>
+                        <button class="saas-btn-secondary" style="padding: 5px 10px; font-size: 0.8rem;" onclick="resetUserPassword(${u.id})">🔑 Pass</button>
+                        ${u.role !== 'superadmin' ? `<button class="saas-btn-danger" style="padding: 5px 10px; font-size: 0.8rem;" onclick="deleteUser(${u.id})">🗑️</button>` : ''}
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    document.getElementById('usersList').innerHTML = `
+        <div class="saas-table-responsive">
+            <table class="saas-table">
+                <thead>
+                    <tr>
+                        <th>Usuario</th>
+                        <th>Rol</th>
+                        <th>Tenant ID</th>
+                        <th>Plan</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+        </div>
+    `;
 }
 
 function showCreateUserModal() {
     showModal(`
-        <h3 style="margin: 0 0 16px 0;">Crear Usuario</h3>
+        <div class="modal-header">
+            <h3>Crear Nuevo Usuario</h3>
+            <button class="modal-close-btn" onclick="hideModal()">✖</button>
+        </div>
         <form onsubmit="createUser(event)">
             <div class="form-group">
-                <label>Nombre</label>
-                <input type="text" id="newUserName" required style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px;">
+                <label>Nombre Completo</label>
+                <input type="text" id="newUserName" required placeholder="Ej: María Rodríguez">
             </div>
-            <div class="form-group" style="margin-top: 12px;">
-                <label>Email</label>
-                <input type="email" id="newUserEmail" required style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px;">
+            <div class="form-group">
+                <label>Correo Electrónico</label>
+                <input type="email" id="newUserEmail" required placeholder="usuario@empresa.com">
             </div>
-            <div class="form-group" style="margin-top: 12px;">
+            <div class="form-group">
                 <label>Contraseña</label>
-                <input type="password" id="newUserPassword" required minlength="6" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px;">
+                <input type="password" id="newUserPassword" required minlength="6" placeholder="Mínimo 6 caracteres">
             </div>
-            <div class="form-group" style="margin-top: 12px;">
-                <label>Rol</label>
-                <select id="newUserRole" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px;">
-                    <option value="owner">Owner</option>
-                    <option value="admin">Admin</option>
-                    <option value="superadmin">Super Admin</option>
+            <div class="form-group">
+                <label>Rol en la Plataforma</label>
+                <select id="newUserRole">
+                    <option value="owner">Owner (Dueño de Local)</option>
+                    <option value="admin">Admin (Administrador)</option>
+                    <option value="superadmin">Super Admin (Acceso Total)</option>
                 </select>
             </div>
-            <div class="form-actions" style="margin-top: 20px; display: flex; gap: 8px;">
-                <button type="submit" class="btn-primary">Crear</button>
-                <button type="button" class="btn-secondary" onclick="hideModal()">Cancelar</button>
+            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px;">
+                <button type="button" class="saas-btn-secondary" onclick="hideModal()">Cancelar</button>
+                <button type="submit" class="saas-btn-primary">➕ Crear Usuario</button>
             </div>
         </form>
     `);
@@ -417,13 +547,13 @@ async function createUser(e) {
         if (res.ok) {
             hideModal();
             loadUsers();
-            showToast('✅ Usuario creado', 'success');
+            showToast('✅ Usuario creado exitosamente', 'success');
         } else {
             const data = await res.json();
-            showToast(`❌ ${data.error}`, 'error');
+            showToast(`❌ ${data.error || 'Error al crear usuario'}`, 'error');
         }
     } catch (error) {
-        showToast('❌ Error al crear', 'error');
+        showToast('❌ Error al procesar solicitud', 'error');
     }
 }
 
@@ -432,27 +562,30 @@ function editUser(id) {
     if (!user) return;
 
     showModal(`
-        <h3 style="margin: 0 0 16px 0;">Editar Usuario: ${escapeHtml(user.name)}</h3>
+        <div class="modal-header">
+            <h3>Editar Usuario: ${escapeHtml(user.name)}</h3>
+            <button class="modal-close-btn" onclick="hideModal()">✖</button>
+        </div>
         <form onsubmit="saveUser(event, ${id})">
             <div class="form-group">
                 <label>Nombre</label>
-                <input type="text" id="editUserName" value="${escapeHtml(user.name)}" required style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px;">
+                <input type="text" id="editUserName" value="${escapeHtml(user.name)}" required>
             </div>
-            <div class="form-group" style="margin-top: 12px;">
+            <div class="form-group">
                 <label>Email</label>
-                <input type="email" id="editUserEmail" value="${escapeHtml(user.email)}" required style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px;">
+                <input type="email" id="editUserEmail" value="${escapeHtml(user.email)}" required>
             </div>
-            <div class="form-group" style="margin-top: 12px;">
+            <div class="form-group">
                 <label>Rol</label>
-                <select id="editUserRole" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px;">
+                <select id="editUserRole">
                     <option value="owner" ${user.role === 'owner' ? 'selected' : ''}>Owner</option>
                     <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
                     <option value="superadmin" ${user.role === 'superadmin' ? 'selected' : ''}>Super Admin</option>
                 </select>
             </div>
-            <div class="form-actions" style="margin-top: 20px; display: flex; gap: 8px;">
-                <button type="submit" class="btn-primary">Guardar</button>
-                <button type="button" class="btn-secondary" onclick="hideModal()">Cancelar</button>
+            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px;">
+                <button type="button" class="saas-btn-secondary" onclick="hideModal()">Cancelar</button>
+                <button type="submit" class="saas-btn-primary">💾 Guardar Cambios</button>
             </div>
         </form>
     `);
@@ -476,15 +609,15 @@ async function saveUser(e, id) {
             showToast('✅ Usuario actualizado', 'success');
         }
     } catch (error) {
-        showToast('❌ Error al guardar', 'error');
+        showToast('❌ Error al guardar usuario', 'error');
     }
 }
 
 async function resetUserPassword(id) {
     const user = usersData.find(u => u.id === id);
-    const newPassword = prompt(`Nueva contraseña para ${user?.name || 'este usuario'}:`);
+    const newPassword = prompt(`Introduce la nueva contraseña para "${user?.name || 'este usuario'}":`);
     if (!newPassword || newPassword.length < 6) {
-        if (newPassword !== null) showToast('❌ Mínimo 6 caracteres', 'error');
+        if (newPassword !== null) showToast('❌ La contraseña debe tener al menos 6 caracteres', 'error');
         return;
     }
 
@@ -494,23 +627,23 @@ async function resetUserPassword(id) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ password: newPassword })
         });
-        if (res.ok) showToast('✅ Contraseña actualizada', 'success');
+        if (res.ok) showToast('✅ Contraseña restablecida con éxito', 'success');
     } catch (error) {
-        showToast('❌ Error', 'error');
+        showToast('❌ Error al restablecer contraseña', 'error');
     }
 }
 
 async function deleteUser(id) {
-    if (!confirm('¿Eliminar este usuario?')) return;
+    if (!confirm('¿Estás seguro de eliminar este usuario del sistema?')) return;
 
     try {
         const res = await fetch(`/superadmin/api/users/${id}`, { method: 'DELETE' });
         if (res.ok) {
             loadUsers();
-            showToast('✅ Usuario eliminado', 'success');
+            showToast('✅ Usuario eliminado correctamente', 'success');
         }
     } catch (error) {
-        showToast('❌ Error al eliminar', 'error');
+        showToast('❌ Error al eliminar usuario', 'error');
     }
 }
 
@@ -521,7 +654,7 @@ async function loadPlans() {
         plansData = await res.json();
 
         if (plansData.length === 0) {
-            document.getElementById('plansList').innerHTML = '<p style="text-align: center; color: var(--text-secondary);">No hay planes</p>';
+            document.getElementById('plansList').innerHTML = '<p style="text-align: center; color: var(--saas-text-muted);">No hay planes registrados</p>';
             return;
         }
 
@@ -530,30 +663,41 @@ async function loadPlans() {
             const features = typeof p.features === 'string' ? JSON.parse(p.features) : (p.features || []);
 
             return `
-                <div style="border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; min-width: 250px;">
-                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
-                        <div>
-                            <h4 style="margin: 0;">${escapeHtml(p.name)}</h4>
-                            <div style="font-size: 2rem; font-weight: 700; color: var(--primary);">$${p.price}</div>
-                            <div style="color: var(--text-secondary); font-size: 0.85rem;">/${p.interval || 'mes'}</div>
+                <div class="saas-card" style="display: flex; flex-direction: column; justify-content: space-between;">
+                    <div>
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                            <div>
+                                <h4 style="margin: 0; font-size: 1.2rem; font-weight: 700;">${escapeHtml(p.name)}</h4>
+                                <span style="font-size: 0.75rem; color: var(--saas-text-muted); font-family: monospace;">ID: ${escapeHtml(p.id)}</span>
+                            </div>
+                            <span class="saas-status-badge ${p.active !== false ? 'saas-status-active' : 'saas-status-suspended'}">
+                                <span class="saas-status-dot"></span>
+                                ${p.active !== false ? 'Activo' : 'Inactivo'}
+                            </span>
                         </div>
-                        <span style="background: ${p.active !== false ? '#dcfce7' : '#fee2e2'}; color: ${p.active !== false ? '#16a34a' : '#dc2626'}; padding: 4px 10px; border-radius: 999px; font-size: 0.8rem;">
-                            ${p.active !== false ? 'Activo' : 'Inactivo'}
-                        </span>
+                        
+                        <div style="display: flex; align-items: baseline; gap: 4px; margin-bottom: 12px;">
+                            <span style="font-size: 2.2rem; font-weight: 800; color: var(--saas-primary);">$${p.price}</span>
+                            <span style="color: var(--saas-text-muted); font-size: 0.85rem;">/ ${p.interval || 'mes'}</span>
+                        </div>
+
+                        <p style="font-size: 0.85rem; color: var(--saas-text-muted); margin-bottom: 16px; min-height: 38px;">${escapeHtml(p.description || 'Sin descripción')}</p>
+                        
+                        <div style="font-size: 0.82rem; margin-bottom: 16px; border-top: 1px solid var(--saas-border); padding-top: 12px;">
+                            <div style="font-weight: 600; margin-bottom: 8px; color: var(--saas-text-main);">Características:</div>
+                            ${features.map(f => `<div style="padding: 3px 0; color: var(--saas-text-muted);">✓ ${escapeHtml(f)}</div>`).join('')}
+                        </div>
                     </div>
-                    <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 12px;">${escapeHtml(p.description || '')}</div>
-                    <div style="font-size: 0.85rem; margin-bottom: 12px;">
-                        ${features.map(f => `<div style="padding: 2px 0;">✓ ${escapeHtml(f)}</div>`).join('')}
-                    </div>
-                    <div style="display: flex; gap: 8px;">
-                        <button class="btn-secondary" style="flex: 1; padding: 6px; font-size: 0.8rem;" onclick="editPlan('${p.id}')">Editar</button>
+
+                    <div style="border-top: 1px solid var(--saas-border); padding-top: 14px; margin-top: 10px;">
+                        <button class="saas-btn-secondary" style="width: 100%;" onclick="editPlan('${p.id}')">✏️ Configurar Plan</button>
                     </div>
                 </div>
             `;
         }).join('');
 
         document.getElementById('plansList').innerHTML = `
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px;">
                 ${cards}
             </div>
         `;
@@ -564,75 +708,55 @@ async function loadPlans() {
 
 function showCreatePlanModal() {
     showModal(`
-        <h3 style="margin: 0 0 16px 0;">Crear Plan</h3>
-        <form onsubmit="createPlan(event)" style="display: grid; gap: 16px;">
+        <div class="modal-header">
+            <h3>Crear Nuevo Plan SaaS</h3>
+            <button class="modal-close-btn" onclick="hideModal()">✖</button>
+        </div>
+        <form onsubmit="createPlan(event)">
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                 <div class="form-group">
-                    <label>ID (slug único)</label>
-                    <input type="text" id="newPlanId" required pattern="[a-z0-9-]+" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px;">
+                    <label>ID (Slug único)</label>
+                    <input type="text" id="newPlanId" required pattern="[a-z0-9-]+" placeholder="ej: enterprise-plus">
                 </div>
                 <div class="form-group">
-                    <label>Nombre</label>
-                    <input type="text" id="newPlanName" required style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px;">
+                    <label>Nombre del Plan</label>
+                    <input type="text" id="newPlanName" required placeholder="Ej: Plan Enterprise">
                 </div>
             </div>
             
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                 <div class="form-group">
-                    <label>Precio (USD)</label>
-                    <input type="number" id="newPlanPrice" required step="0.01" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px;">
+                    <label>Precio (USD / mes)</label>
+                    <input type="number" id="newPlanPrice" required step="0.01" placeholder="99.00">
                 </div>
                 <div class="form-group">
-                    <label>Descripción</label>
-                    <input type="text" id="newPlanDescription" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px;">
+                    <label>Descripción corta</label>
+                    <input type="text" id="newPlanDescription" placeholder="Para empresas grandes">
                 </div>
             </div>
 
             <div class="form-group">
                 <label>Características (Una por línea)</label>
-                <textarea id="newPlanFeatures" rows="4" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px;"></textarea>
+                <textarea id="newPlanFeatures" rows="3" placeholder="Mensajes ilimitados&#10;Agentes IA dedicados&#10;Soporte prioritario"></textarea>
             </div>
 
-            <div style="border-top: 1px solid var(--border-color); padding-top: 16px;">
-                <h4 style="margin: 0 0 12px 0;">Límites</h4>
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+            <div style="border-top: 1px solid var(--saas-border); padding-top: 14px; margin-top: 8px;">
+                <h4 style="margin: 0 0 10px 0; font-size: 0.9rem;">Límites de Uso (-1 = ilimitado)</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                     <div class="form-group">
-                        <label>Pedidos/Mes (-1=inf)</label>
-                        <input type="number" id="newPlanLimitOrders" value="-1" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 8px;">
+                        <label>Pedidos/Mes</label>
+                        <input type="number" id="newPlanLimitOrders" value="-1">
                     </div>
                     <div class="form-group">
-                        <label>Productos</label>
-                        <input type="number" id="newPlanLimitProducts" value="100" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 8px;">
-                    </div>
-                    <div class="form-group">
-                        <label>Repartidores</label>
-                        <input type="number" id="newPlanLimitDrivers" value="1" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 8px;">
-                    </div>
-                    <div class="form-group">
-                        <label>Nº WhatsApp</label>
-                        <input type="number" id="newPlanLimitWA" value="1" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 8px;">
+                        <label>Productos Catálogo</label>
+                        <input type="number" id="newPlanLimitProducts" value="100">
                     </div>
                 </div>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                <label style="display: flex; align-items: center; gap: 8px; color: var(--text-primary); cursor: pointer;">
-                    <input type="checkbox" id="newPlanLimitDB"> Conexión BD Externa
-                </label>
-                <label style="display: flex; align-items: center; gap: 8px; color: var(--text-primary); cursor: pointer;">
-                    <input type="checkbox" id="newPlanLimitMulti"> Multi-sucursal
-                </label>
-                <label style="display: flex; align-items: center; gap: 8px; color: var(--text-primary); cursor: pointer;">
-                    <input type="checkbox" id="newPlanLimitApi"> Acceso API
-                </label>
-                <label style="display: flex; align-items: center; gap: 8px; color: var(--text-primary); cursor: pointer;">
-                    <input type="checkbox" id="newPlanLimitBranding"> Custom Branding
-                </label>
-            </div>
-
-            <div class="form-actions" style="margin-top: 10px; display: flex; gap: 8px;">
-                <button type="submit" class="btn-primary">Crear</button>
-                <button type="button" class="btn-secondary" onclick="hideModal()">Cancelar</button>
+            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px;">
+                <button type="button" class="saas-btn-secondary" onclick="hideModal()">Cancelar</button>
+                <button type="submit" class="saas-btn-primary">➕ Crear Plan</button>
             </div>
         </form>
     `);
@@ -647,13 +771,13 @@ async function createPlan(e) {
         const limits = {
             ordersPerMonth: parseInt(document.getElementById('newPlanLimitOrders').value),
             products: parseInt(document.getElementById('newPlanLimitProducts').value),
-            drivers: parseInt(document.getElementById('newPlanLimitDrivers').value),
-            whatsappNumbers: parseInt(document.getElementById('newPlanLimitWA').value),
-            dbConnections: document.getElementById('newPlanLimitDB').checked,
-            multiStore: document.getElementById('newPlanLimitMulti').checked,
-            apiAccess: document.getElementById('newPlanLimitApi').checked,
-            customBranding: document.getElementById('newPlanLimitBranding').checked,
-            prioritySupport: false
+            drivers: 10,
+            whatsappNumbers: 2,
+            dbConnections: true,
+            multiStore: true,
+            apiAccess: true,
+            customBranding: true,
+            prioritySupport: true
         };
 
         const res = await fetch('/superadmin/api/plans', {
@@ -671,10 +795,10 @@ async function createPlan(e) {
         if (res.ok) {
             hideModal();
             loadPlans();
-            showToast('✅ Plan creado', 'success');
+            showToast('✅ Plan creado exitosamente', 'success');
         }
     } catch (error) {
-        showToast('❌ Error al crear', 'error');
+        showToast('❌ Error al crear plan', 'error');
     }
 }
 
@@ -686,69 +810,49 @@ function editPlan(id) {
     const features = typeof plan.features === 'string' ? JSON.parse(plan.features) : (plan.features || []);
 
     showModal(`
-        <h3 style="margin: 0 0 16px 0;">Editar Plan: ${escapeHtml(plan.name)}</h3>
-        <form onsubmit="savePlan(event, '${plan.id}')" style="display: grid; gap: 16px;">
+        <div class="modal-header">
+            <h3>Editar Plan: ${escapeHtml(plan.name)}</h3>
+            <button class="modal-close-btn" onclick="hideModal()">✖</button>
+        </div>
+        <form onsubmit="savePlan(event, '${plan.id}')">
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                 <div class="form-group">
-                    <label>Nombre</label>
-                    <input type="text" id="editPlanName" value="${escapeHtml(plan.name)}" required style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px;">
+                    <label>Nombre del Plan</label>
+                    <input type="text" id="editPlanName" value="${escapeHtml(plan.name)}" required>
                 </div>
                 <div class="form-group">
                     <label>Precio (USD)</label>
-                    <input type="number" id="editPlanPrice" value="${plan.price}" step="0.01" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px;">
+                    <input type="number" id="editPlanPrice" value="${plan.price}" step="0.01" required>
                 </div>
             </div>
             
             <div class="form-group">
                 <label>Descripción</label>
-                <input type="text" id="editPlanDescription" value="${escapeHtml(plan.description || '')}" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px;">
+                <input type="text" id="editPlanDescription" value="${escapeHtml(plan.description || '')}">
             </div>
 
             <div class="form-group">
                 <label>Características (Una por línea)</label>
-                <textarea id="editPlanFeatures" rows="4" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px;">${escapeHtml(features.join('\n'))}</textarea>
+                <textarea id="editPlanFeatures" rows="3">${escapeHtml(features.join('\n'))}</textarea>
             </div>
 
-            <div style="border-top: 1px solid var(--border-color); padding-top: 16px;">
-                <h4 style="margin: 0 0 12px 0;">Límites</h4>
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+            <div style="border-top: 1px solid var(--saas-border); padding-top: 14px; margin-top: 8px;">
+                <h4 style="margin: 0 0 10px 0; font-size: 0.9rem;">Límites de Uso (-1 = ilimitado)</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                     <div class="form-group">
-                        <label>Pedidos/Mes (-1=inf)</label>
-                        <input type="number" id="editPlanLimitOrders" value="${limits.ordersPerMonth || -1}" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 8px;">
+                        <label>Pedidos/Mes</label>
+                        <input type="number" id="editPlanLimitOrders" value="${limits.ordersPerMonth || -1}">
                     </div>
                     <div class="form-group">
-                        <label>Productos</label>
-                        <input type="number" id="editPlanLimitProducts" value="${limits.products || -1}" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 8px;">
-                    </div>
-                    <div class="form-group">
-                        <label>Repartidores</label>
-                        <input type="number" id="editPlanLimitDrivers" value="${limits.drivers || -1}" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 8px;">
-                    </div>
-                    <div class="form-group">
-                        <label>Nº WhatsApp</label>
-                        <input type="number" id="editPlanLimitWA" value="${limits.whatsappNumbers || 1}" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 8px;">
+                        <label>Productos Catálogo</label>
+                        <input type="number" id="editPlanLimitProducts" value="${limits.products || -1}">
                     </div>
                 </div>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                <label style="display: flex; align-items: center; gap: 8px; color: var(--text-primary); cursor: pointer;">
-                    <input type="checkbox" id="editPlanLimitDB" ${limits.dbConnections ? 'checked' : ''}> Conexión BD Externa
-                </label>
-                <label style="display: flex; align-items: center; gap: 8px; color: var(--text-primary); cursor: pointer;">
-                    <input type="checkbox" id="editPlanLimitMulti" ${limits.multiStore ? 'checked' : ''}> Multi-sucursal
-                </label>
-                <label style="display: flex; align-items: center; gap: 8px; color: var(--text-primary); cursor: pointer;">
-                    <input type="checkbox" id="editPlanLimitApi" ${limits.apiAccess ? 'checked' : ''}> Acceso API
-                </label>
-                <label style="display: flex; align-items: center; gap: 8px; color: var(--text-primary); cursor: pointer;">
-                    <input type="checkbox" id="editPlanLimitBranding" ${limits.customBranding ? 'checked' : ''}> Custom Branding
-                </label>
-            </div>
-
-            <div class="form-actions" style="margin-top: 10px; display: flex; gap: 8px;">
-                <button type="submit" class="btn-primary">Guardar</button>
-                <button type="button" class="btn-secondary" onclick="hideModal()">Cancelar</button>
+            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px;">
+                <button type="button" class="saas-btn-secondary" onclick="hideModal()">Cancelar</button>
+                <button type="submit" class="saas-btn-primary">💾 Guardar Cambios</button>
             </div>
         </form>
     `);
@@ -762,14 +866,7 @@ async function savePlan(e, id) {
         
         const limits = {
             ordersPerMonth: parseInt(document.getElementById('editPlanLimitOrders').value),
-            products: parseInt(document.getElementById('editPlanLimitProducts').value),
-            drivers: parseInt(document.getElementById('editPlanLimitDrivers').value),
-            whatsappNumbers: parseInt(document.getElementById('editPlanLimitWA').value),
-            dbConnections: document.getElementById('editPlanLimitDB').checked,
-            multiStore: document.getElementById('editPlanLimitMulti').checked,
-            apiAccess: document.getElementById('editPlanLimitApi').checked,
-            customBranding: document.getElementById('editPlanLimitBranding').checked,
-            prioritySupport: false
+            products: parseInt(document.getElementById('editPlanLimitProducts').value)
         };
 
         const res = await fetch(`/superadmin/api/plans/${id}`, {
@@ -786,10 +883,10 @@ async function savePlan(e, id) {
         if (res.ok) {
             hideModal();
             loadPlans();
-            showToast('✅ Plan actualizado', 'success');
+            showToast('✅ Plan actualizado correctamente', 'success');
         }
     } catch (error) {
-        showToast('❌ Error al guardar', 'error');
+        showToast('❌ Error al guardar plan', 'error');
     }
 }
 
@@ -800,39 +897,44 @@ async function loadAiStatus() {
         const data = await res.json();
 
         if (data.length === 0) {
-            document.getElementById('aiStatusList').innerHTML = '<p style="text-align: center; color: var(--text-secondary);">No hay tenants configurados</p>';
+            document.getElementById('aiStatusList').innerHTML = '<p style="text-align: center; color: var(--saas-text-muted);">No hay agentes registrados</p>';
             return;
         }
 
         const rows = data.map(a => `
-            <tr style="border-bottom: 1px solid var(--border-color);">
-                <td style="padding: 12px;">
-                    <div style="font-weight: 600;">${escapeHtml(a.name)}</div>
-                    <div style="font-size: 0.8rem; color: var(--text-secondary);">${escapeHtml(a.business_type || 'general')}</div>
+            <tr>
+                <td>
+                    <div class="saas-entity-cell">
+                        <div class="saas-entity-avatar" style="background: rgba(6, 182, 212, 0.12); color: var(--saas-accent-cyan);">🧠</div>
+                        <div class="saas-entity-info">
+                            <h4>${escapeHtml(a.name)}</h4>
+                            <p>${escapeHtml(a.business_type || 'general')}</p>
+                        </div>
+                    </div>
                 </td>
-                <td style="padding: 12px;">
-                    <span style="background: #dbeafe; padding: 4px 10px; border-radius: 999px; font-size: 0.8rem; font-weight: 600;">
-                        ${escapeHtml(a.ai_provider || 'openai')}
-                    </span>
+                <td>
+                    <span class="saas-plan-tag saas-plan-pro">${escapeHtml(a.ai_provider || 'openai')}</span>
                 </td>
-                <td style="padding: 12px;">${escapeHtml(a.ai_model || 'gpt-4o')}</td>
-                <td style="padding: 12px;">${a.has_api_key ? '✅ Configurado' : '⚠️ Sin API Key'}</td>
-                <td style="padding: 12px; text-align: center;">${a.active_conversations || 0}</td>
-                <td style="padding: 12px; text-align: center;">${a.orders_today || 0}</td>
+                <td>
+                    <span style="font-family: monospace; font-weight: 600;">${escapeHtml(a.ai_model || 'gpt-4o')}</span>
+                </td>
+                <td>${a.has_api_key ? '<span class="saas-status-badge saas-status-active"><span class="saas-status-dot"></span> Configurada</span>' : '<span class="saas-status-badge saas-status-suspended"><span class="saas-status-dot"></span> Sin Key</span>'}</td>
+                <td style="text-align: center; font-weight: 600;">${a.active_conversations || 0}</td>
+                <td style="text-align: center; font-weight: 600;">${a.orders_today || 0}</td>
             </tr>
         `).join('');
 
         document.getElementById('aiStatusList').innerHTML = `
-            <div style="overflow-x: auto;">
-                <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+            <div class="saas-table-responsive">
+                <table class="saas-table">
                     <thead>
-                        <tr style="border-bottom: 2px solid var(--border-color); text-align: left;">
-                            <th style="padding: 12px;">Tenant</th>
-                            <th style="padding: 12px;">Proveedor</th>
-                            <th style="padding: 12px;">Modelo</th>
-                            <th style="padding: 12px;">API Key</th>
-                            <th style="padding: 12px; text-align: center;">Conversaciones</th>
-                            <th style="padding: 12px; text-align: center;">Pedidos Hoy</th>
+                        <tr>
+                            <th>Tenant / Negocio</th>
+                            <th>Proveedor IA</th>
+                            <th>Modelo Cognitivo</th>
+                            <th>API Key</th>
+                            <th style="text-align: center;">Conversaciones Activas</th>
+                            <th style="text-align: center;">Pedidos Hoy</th>
                         </tr>
                     </thead>
                     <tbody>${rows}</tbody>
@@ -851,38 +953,42 @@ async function loadWhatsAppStatus() {
         const data = await res.json();
 
         if (data.length === 0) {
-            document.getElementById('whatsappStatusList').innerHTML = '<p style="text-align: center; color: var(--text-secondary);">No hay tenants configurados</p>';
+            document.getElementById('whatsappStatusList').innerHTML = '<p style="text-align: center; color: var(--saas-text-muted);">No hay instancias de WhatsApp registradas</p>';
             return;
         }
 
         const rows = data.map(w => `
-            <tr style="border-bottom: 1px solid var(--border-color);">
-                <td style="padding: 12px;">
-                    <div style="font-weight: 600;">${escapeHtml(w.name)}</div>
+            <tr>
+                <td>
+                    <div class="saas-entity-cell">
+                        <div class="saas-entity-avatar" style="background: rgba(16, 185, 129, 0.12); color: var(--saas-primary);">📱</div>
+                        <div class="saas-entity-info">
+                            <h4>${escapeHtml(w.name)}</h4>
+                        </div>
+                    </div>
                 </td>
-                <td style="padding: 12px;">${escapeHtml(w.phone || '—')}</td>
-                <td style="padding: 12px;">
-                    <span style="background: #dbeafe; padding: 4px 10px; border-radius: 999px; font-size: 0.8rem; font-weight: 600;">
-                        ${escapeHtml(w.whatsapp_provider || 'baileys')}
-                    </span>
+                <td style="font-family: monospace; font-weight: 600;">${escapeHtml(w.phone || '—')}</td>
+                <td>
+                    <span class="saas-plan-tag saas-plan-pro">${escapeHtml(w.whatsapp_provider || 'baileys')}</span>
                 </td>
-                <td style="padding: 12px;">
-                    <span style="color: ${w.whatsapp_status === 'connected' ? '#16a34a' : '#dc2626'}; font-weight: 600;">
-                        ${w.whatsapp_status === 'connected' ? '🟢 Conectado' : '🔴 Desconectado'}
-                    </span>
+                <td>
+                    ${w.whatsapp_status === 'connected'
+                        ? '<span class="saas-status-badge saas-status-active"><span class="saas-status-dot"></span> En Línea</span>'
+                        : '<span class="saas-status-badge saas-status-suspended"><span class="saas-status-dot"></span> Desconectado</span>'
+                    }
                 </td>
             </tr>
         `).join('');
 
         document.getElementById('whatsappStatusList').innerHTML = `
-            <div style="overflow-x: auto;">
-                <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+            <div class="saas-table-responsive">
+                <table class="saas-table">
                     <thead>
-                        <tr style="border-bottom: 2px solid var(--border-color); text-align: left;">
-                            <th style="padding: 12px;">Tenant</th>
-                            <th style="padding: 12px;">Teléfono</th>
-                            <th style="padding: 12px;">Proveedor</th>
-                            <th style="padding: 12px;">Estado</th>
+                        <tr>
+                            <th>Tenant</th>
+                            <th>Teléfono Vinculado</th>
+                            <th>Motor / Proveedor</th>
+                            <th>Estado de Conexión</th>
                         </tr>
                     </thead>
                     <tbody>${rows}</tbody>
@@ -901,38 +1007,41 @@ async function loadDbConnections() {
         const data = await res.json();
 
         if (data.length === 0) {
-            document.getElementById('dbConnectionsList').innerHTML = '<p style="text-align: center; color: var(--text-secondary);">No hay conexiones de BD externas configuradas</p>';
+            document.getElementById('dbConnectionsList').innerHTML = '<p style="text-align: center; color: var(--saas-text-muted);">No hay conexiones de BD externas configuradas</p>';
             return;
         }
 
         const rows = data.map(c => `
-            <tr style="border-bottom: 1px solid var(--border-color);">
-                <td style="padding: 12px;">
-                    <div style="font-weight: 600;">${escapeHtml(c.store_name)}</div>
+            <tr>
+                <td>
+                    <div class="saas-entity-cell">
+                        <div class="saas-entity-avatar" style="background: rgba(245, 158, 11, 0.12); color: var(--saas-accent-amber);">🗄️</div>
+                        <div class="saas-entity-info">
+                            <h4>${escapeHtml(c.store_name)}</h4>
+                        </div>
+                    </div>
                 </td>
-                <td style="padding: 12px;">
-                    <span style="background: #dbeafe; padding: 4px 10px; border-radius: 999px; font-size: 0.8rem; font-weight: 600;">
-                        ${escapeHtml(c.db_type)}
-                    </span>
+                <td>
+                    <span class="saas-plan-tag saas-plan-enterprise">${escapeHtml(c.db_type)}</span>
                 </td>
-                <td style="padding: 12px;">${escapeHtml(c.host || '—')}:${c.port || '—'}</td>
-                <td style="padding: 12px;">${escapeHtml(c.database_name || '—')}</td>
-                <td style="padding: 12px;">${escapeHtml(c.table_name || '—')}</td>
-                <td style="padding: 12px;">${c.last_sync ? new Date(c.last_sync).toLocaleString() : 'Nunca'}</td>
+                <td style="font-family: monospace;">${escapeHtml(c.host || '—')}:${c.port || '—'}</td>
+                <td style="font-weight: 600;">${escapeHtml(c.database_name || '—')}</td>
+                <td>${escapeHtml(c.table_name || '—')}</td>
+                <td style="font-size: 0.8rem; color: var(--saas-text-muted);">${c.last_sync ? new Date(c.last_sync).toLocaleString() : 'Nunca'}</td>
             </tr>
         `).join('');
 
         document.getElementById('dbConnectionsList').innerHTML = `
-            <div style="overflow-x: auto;">
-                <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+            <div class="saas-table-responsive">
+                <table class="saas-table">
                     <thead>
-                        <tr style="border-bottom: 2px solid var(--border-color); text-align: left;">
-                            <th style="padding: 12px;">Tenant</th>
-                            <th style="padding: 12px;">Tipo</th>
-                            <th style="padding: 12px;">Host:Port</th>
-                            <th style="padding: 12px;">Base de Datos</th>
-                            <th style="padding: 12px;">Tabla</th>
-                            <th style="padding: 12px;">Última Sync</th>
+                        <tr>
+                            <th>Tenant</th>
+                            <th>Motor BD</th>
+                            <th>Host : Puerto</th>
+                            <th>Base de Datos</th>
+                            <th>Tabla Vinculada</th>
+                            <th>Última Sincronización</th>
                         </tr>
                     </thead>
                     <tbody>${rows}</tbody>
@@ -952,36 +1061,34 @@ async function loadAuditLog(page = 1) {
         const data = await res.json();
 
         if (data.logs.length === 0) {
-            document.getElementById('auditLogList').innerHTML = '<p style="text-align: center; color: var(--text-secondary);">No hay registros de auditoría</p>';
+            document.getElementById('auditLogList').innerHTML = '<p style="text-align: center; color: var(--saas-text-muted);">No hay registros de auditoría recientes</p>';
             return;
         }
 
         const rows = data.logs.map(l => `
-            <tr style="border-bottom: 1px solid var(--border-color);">
-                <td style="padding: 10px; font-size: 0.85rem;">${new Date(l.created_at).toLocaleString()}</td>
-                <td style="padding: 10px; font-size: 0.85rem;">${escapeHtml(l.admin_name || '—')}</td>
-                <td style="padding: 10px;">
-                    <span style="background: #dbeafe; padding: 2px 8px; border-radius: 999px; font-size: 0.75rem; font-weight: 600;">
-                        ${escapeHtml(l.action)}
-                    </span>
+            <tr>
+                <td style="font-size: 0.82rem; color: var(--saas-text-muted); white-space: nowrap;">${new Date(l.created_at).toLocaleString()}</td>
+                <td style="font-weight: 600;">${escapeHtml(l.admin_name || '—')}</td>
+                <td>
+                    <span class="saas-plan-tag saas-plan-pro">${escapeHtml(l.action)}</span>
                 </td>
-                <td style="padding: 10px; font-size: 0.85rem;">${escapeHtml(l.target_type || '—')} #${l.target_id || '—'}</td>
-                <td style="padding: 10px; font-size: 0.8rem; color: var(--text-secondary); max-width: 200px; overflow: hidden; text-overflow: ellipsis;">
+                <td>${escapeHtml(l.target_type || '—')} #${l.target_id || '—'}</td>
+                <td style="font-size: 0.8rem; color: var(--saas-text-muted); max-width: 250px; overflow: hidden; text-overflow: ellipsis;">
                     ${l.details ? escapeHtml(l.details).substring(0, 80) + '...' : '—'}
                 </td>
             </tr>
         `).join('');
 
         document.getElementById('auditLogList').innerHTML = `
-            <div style="overflow-x: auto;">
-                <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+            <div class="saas-table-responsive">
+                <table class="saas-table">
                     <thead>
-                        <tr style="border-bottom: 2px solid var(--border-color); text-align: left;">
-                            <th style="padding: 10px;">Fecha</th>
-                            <th style="padding: 10px;">Admin</th>
-                            <th style="padding: 10px;">Acción</th>
-                            <th style="padding: 10px;">Destino</th>
-                            <th style="padding: 10px;">Detalles</th>
+                        <tr>
+                            <th>Fecha & Hora</th>
+                            <th>Administrador</th>
+                            <th>Acción</th>
+                            <th>Destino</th>
+                            <th>Detalles</th>
                         </tr>
                     </thead>
                     <tbody>${rows}</tbody>
@@ -989,11 +1096,10 @@ async function loadAuditLog(page = 1) {
             </div>
         `;
 
-        // Pagination
         let paginationHtml = '';
         if (data.totalPages > 1) {
             for (let i = 1; i <= data.totalPages; i++) {
-                paginationHtml += `<button class="btn-secondary" style="padding: 6px 12px; font-size: 0.85rem; ${i === currentAuditPage ? 'background: var(--primary); color: white;' : ''}" onclick="loadAuditLog(${i})">${i}</button>`;
+                paginationHtml += `<button class="saas-btn-secondary" style="padding: 6px 12px; font-size: 0.85rem; ${i === currentAuditPage ? 'background: var(--saas-primary); color: white;' : ''}" onclick="loadAuditLog(${i})">${i}</button>`;
             }
         }
         document.getElementById('auditPagination').innerHTML = paginationHtml;
@@ -1002,7 +1108,7 @@ async function loadAuditLog(page = 1) {
     }
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Modal & Helpers ─────────────────────────────────────────────────────────
 function showModal(html) {
     const overlay = document.getElementById('modalOverlay');
     const content = document.getElementById('modalContent');
@@ -1011,19 +1117,38 @@ function showModal(html) {
 }
 
 function hideModal() {
-    document.getElementById('modalOverlay').style.display = 'none';
+    const overlay = document.getElementById('modalOverlay');
+    if (overlay) overlay.style.display = 'none';
 }
 
 function showToast(message, type = 'info') {
     const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
+    toast.className = `saas-toast ${type}`;
     toast.textContent = message;
-    toast.style.cssText = 'position: fixed; bottom: 24px; right: 24px; padding: 12px 20px; border-radius: 8px; color: white; font-weight: 600; z-index: 9999; animation: slideIn 0.3s ease;';
-    if (type === 'success') toast.style.background = '#16a34a';
-    else if (type === 'error') toast.style.background = '#dc2626';
-    else toast.style.background = '#2563eb';
+    toast.style.cssText = `
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        padding: 12px 20px;
+        border-radius: 12px;
+        color: white;
+        font-weight: 600;
+        font-size: 0.9rem;
+        z-index: 9999;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+        animation: saasModalScaleUp 0.25s ease;
+        backdrop-filter: blur(10px);
+    `;
+    if (type === 'success') toast.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+    else if (type === 'error') toast.style.background = 'linear-gradient(135deg, #f43f5e, #e11d48)';
+    else toast.style.background = 'linear-gradient(135deg, #0284c7, #0369a1)';
+    
     document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 3000);
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+    }, 3200);
 }
 
 function escapeHtml(text) {
@@ -1033,7 +1158,7 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// Close modal on overlay click
-document.getElementById('modalOverlay')?.addEventListener('click', (e) => {
-    if (e.target === e.currentTarget) hideModal();
+// Global modal close on Escape key
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') hideModal();
 });

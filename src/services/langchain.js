@@ -36,6 +36,8 @@ class LangChainService {
      * @returns {Object} { response: string, order: Object|null, appointment: Object|null, booking: Object|null }
      */
     async processMessage(message, storeId, customerPhone) {
+        const startTime = Date.now();
+
         // Obtener tienda/local y cliente
         const store = Store.getById(storeId);
         const Customer = require('../models/Customer');
@@ -260,6 +262,13 @@ class LangChainService {
                 response = await withTimeout(modelWithTools.invoke(messages), 20000);
             }
 
+            const elapsedMs = Date.now() - startTime;
+            if (elapsedMs > 5000) {
+                console.warn(`⚠️ [IA Latency Alert] Respuesta de IA demoró ${elapsedMs}ms (>5s) | Tienda: ${storeId} | Proveedor: ${requestedProvider}`);
+            } else {
+                console.log(`🧠 [IA Telemetry] Respuesta generada en ${elapsedMs}ms | Tienda: ${storeId} | Proveedor: ${requestedProvider}`);
+            }
+
             const aiResponse = response.content;
 
             // Guardar en historial de conversación
@@ -329,7 +338,8 @@ class LangChainService {
                 requiere_humano: false
             };
         } catch (error) {
-            console.error(`❌ Error en LangChain (${this.provider}):`, error.message);
+            const elapsedMs = Date.now() - startTime;
+            console.error(`❌ [IA Error] Error en LangChain tras ${elapsedMs}ms (${requestedProvider}):`, error.message);
             const fallbackMsg = error.message === 'TIMEOUT_EXCEEDED' 
                 ? '⏳ En este momento estoy un poco saturado y no pude procesar tu mensaje. Por favor, intentá de nuevo en unos segundos. 🙏'
                 : '¡Disculpá! Tuve un problema técnico procesando tu mensaje. ¿Podés intentar de nuevo? 🙏';

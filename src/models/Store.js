@@ -32,14 +32,14 @@ class Store {
         return stores.map(store => this._parseCategories(store));
     }
 
-    static async create({ name, phone, address, adminPassword, botName, businessType, aiPrompt, categories, themeEmoji, welcomeMessage, currency, clinicMode = 0, hostelMode = 0 }) {
+    static create({ name, phone, address, adminPassword, botName, businessType, aiPrompt, categories, themeEmoji, welcomeMessage, currency, clinicMode = 0, hostelMode = 0 }) {
         const db = getDb();
         const cats = categories ? JSON.stringify(categories) : '["General"]';
         
         // Si no hay phone, generar uno único para evitar conflicto UNIQUE
-        const storePhone = phone || `store_${Date.now()}`;
+        const storePhone = phone || `store_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
         
-        const passwordHash = adminPassword ? await bcrypt.hash(adminPassword, 10) : '';
+        const passwordHash = adminPassword ? bcrypt.hashSync(adminPassword, 10) : '';
 
         const result = db.prepare(`
             INSERT INTO stores (name, phone, address, admin_password, bot_name, business_type, ai_prompt, categories, theme_emoji, welcome_message, currency, clinic_mode, hostel_mode)
