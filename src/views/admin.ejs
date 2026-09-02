@@ -64,82 +64,99 @@
     </header>
 
     <main class="admin-main">
-        <!-- Navegación de Pestañas con Scroll Horizontal Suave -->
-        <div class="admin-tabs-wrapper">
-            <div class="tabs-scroll-fade fade-left"></div>
-            <div class="admin-tabs" id="adminTabsBar">
-                <!-- Gestión & Catálogo -->
-                <button class="tab-btn active" data-tab="products" onclick="switchTab('products')">
-                    <span class="tab-icon">📦</span>
-                    <span class="tab-label">Productos</span>
+        <!-- Navegación Jerárquica: Módulos Principales y Submenús Contextuales -->
+        <div class="admin-navigation-system">
+            <!-- Nivel 1: Barra de Módulos Principales -->
+            <nav class="admin-main-nav" id="adminMainNav" aria-label="Módulos Principales">
+                <button type="button" class="main-nav-btn active" data-module="catalog" onclick="switchModule('catalog')">
+                    <span class="main-nav-icon">📦</span>
+                    <span class="main-nav-label">Catálogo</span>
                 </button>
-                <button class="tab-btn" data-tab="services" onclick="switchTab('services')" id="tab-services-btn" style="<%= (store && store.clinic_mode === 1) ? '' : 'display: none;' %>">
-                    <span class="tab-icon">⚕️</span>
-                    <span class="tab-label">Servicios</span>
+                <button type="button" class="main-nav-btn" data-module="appointments" id="main-nav-appointments" onclick="switchModule('appointments')" style="<%= (store && store.clinic_mode === 1) ? '' : 'display: none;' %>">
+                    <span class="main-nav-icon">📅</span>
+                    <span class="main-nav-label">Citas</span>
                 </button>
-                <button class="tab-btn" data-tab="doctors" onclick="switchTab('doctors')" id="tab-doctors-btn" style="<%= (store && store.clinic_mode === 1) ? '' : 'display: none;' %>">
-                    <span class="tab-icon">👨‍⚕️</span>
-                    <span class="tab-label">Doctores</span>
-                </button>
-                <button class="tab-btn" data-tab="appointments" onclick="switchTab('appointments')" id="tab-appointments-btn" style="<%= (store && store.clinic_mode === 1) ? '' : 'display: none;' %>">
-                    <span class="tab-icon">📅</span>
-                    <span class="tab-label">Citas</span>
-                </button>
-                <button class="tab-btn" data-tab="rooms" onclick="switchTab('rooms')" id="tab-rooms-btn" style="<%= (store && store.hostel_mode === 1) ? '' : 'display: none;' %>">
-                    <span class="tab-icon">🛏️</span>
-                    <span class="tab-label">Habitaciones</span>
-                </button>
-                <button class="tab-btn" data-tab="bookings" onclick="switchTab('bookings')" id="tab-bookings-btn" style="<%= (store && store.hostel_mode === 1) ? '' : 'display: none;' %>">
-                    <span class="tab-icon">🏨</span>
-                    <span class="tab-label">Reservas</span>
-                </button>
-                <button class="tab-btn" data-tab="drivers" onclick="switchTab('drivers')">
-                    <span class="tab-icon">🛵</span>
-                    <span class="tab-label">Repartidores</span>
-                </button>
-
-                <div class="tabs-separator"></div>
-
-                <!-- Atención & Clientes -->
-                <button class="tab-btn" data-tab="chats" onclick="switchTab('chats')">
-                    <span class="tab-icon">💬</span>
-                    <span class="tab-label">Chats</span>
+                <button type="button" class="main-nav-btn" data-module="chats" data-tab="chats" onclick="switchTab('chats')">
+                    <span class="main-nav-icon">💬</span>
+                    <span class="main-nav-label">Chats</span>
                     <span class="badge-red" id="chatsHandoffBadge" style="display: none;">!</span>
                 </button>
-                <button class="tab-btn" data-tab="customers" onclick="switchTab('customers')">
-                    <span class="tab-icon">👥</span>
-                    <span class="tab-label">Clientes</span>
+                <button type="button" class="main-nav-btn" data-module="customers" data-tab="customers" onclick="switchTab('customers')">
+                    <span class="main-nav-icon">👥</span>
+                    <span class="main-nav-label">Clientes</span>
                 </button>
-                <button class="tab-btn" data-tab="history" onclick="switchTab('history')">
-                    <span class="tab-icon">📜</span>
-                    <span class="tab-label">Historial</span>
+                <button type="button" class="main-nav-btn" data-module="settings" onclick="switchModule('settings')">
+                    <span class="main-nav-icon">⚙️</span>
+                    <span class="main-nav-label">Ajustes</span>
                 </button>
+            </nav>
 
-                <div class="tabs-separator"></div>
+            <!-- Nivel 2: Submenús Contextuales por Módulo -->
+            <div class="admin-subnav-bar" id="adminSubnavBar">
+                <!-- Submenú: Catálogo -->
+                <div class="subnav-group active" id="subnav-catalog" data-module="catalog">
+                    <button type="button" class="subnav-btn active" data-tab="products" onclick="switchTab('products')">
+                        <span class="subnav-icon">📦</span>
+                        <span class="subnav-label">Productos</span>
+                    </button>
+                    <button type="button" class="subnav-btn" data-tab="services" onclick="switchTab('services')" id="tab-services-btn" style="<%= (store && store.clinic_mode === 1) ? '' : 'display: none;' %>">
+                        <span class="subnav-icon">⚕️</span>
+                        <span class="subnav-label">Servicios</span>
+                    </button>
+                    <button type="button" class="subnav-btn" data-tab="rooms" onclick="switchTab('rooms')" id="tab-rooms-btn" style="<%= (store && store.hostel_mode === 1) ? '' : 'display: none;' %>">
+                        <span class="subnav-icon">🛏️</span>
+                        <span class="subnav-label">Habitaciones</span>
+                    </button>
+                    <button type="button" class="subnav-btn" data-tab="bookings" onclick="switchTab('bookings')" id="tab-bookings-btn" style="<%= (store && store.hostel_mode === 1) ? '' : 'display: none;' %>">
+                        <span class="subnav-icon">🏨</span>
+                        <span class="subnav-label">Reservas</span>
+                    </button>
+                </div>
 
-                <!-- Configuración & Conexiones -->
-                <button class="tab-btn" data-tab="settings" onclick="switchTab('settings')">
-                    <span class="tab-icon">⚙️</span>
-                    <span class="tab-label">Ajustes</span>
-                </button>
-                <button class="tab-btn" data-tab="whatsapp" onclick="switchTab('whatsapp')">
-                    <span class="tab-icon">📱</span>
-                    <span class="tab-label">WhatsApp</span>
-                </button>
-                <button class="tab-btn" data-tab="excel" onclick="switchTab('excel')">
-                    <span class="tab-icon">📊</span>
-                    <span class="tab-label">Excel</span>
-                </button>
-                <button class="tab-btn" data-tab="sheets" onclick="switchTab('sheets')">
-                    <span class="tab-icon">📑</span>
-                    <span class="tab-label">Google Sheets</span>
-                </button>
-                <button class="tab-btn" data-tab="database" onclick="switchTab('database')">
-                    <span class="tab-icon">🗄️</span>
-                    <span class="tab-label">BD Externa</span>
-                </button>
+                <!-- Submenú: Citas / Salud -->
+                <div class="subnav-group" id="subnav-appointments" data-module="appointments" style="display: none;">
+                    <button type="button" class="subnav-btn" data-tab="appointments" onclick="switchTab('appointments')" id="tab-appointments-btn">
+                        <span class="subnav-icon">📅</span>
+                        <span class="subnav-label">Calendario de Citas</span>
+                    </button>
+                    <button type="button" class="subnav-btn" data-tab="doctors" onclick="switchTab('doctors')" id="tab-doctors-btn">
+                        <span class="subnav-icon">👨‍⚕️</span>
+                        <span class="subnav-label">Doctores & Especialistas</span>
+                    </button>
+                </div>
+
+                <!-- Submenú: Ajustes & Configuración -->
+                <div class="subnav-group" id="subnav-settings" data-module="settings" style="display: none;">
+                    <button type="button" class="subnav-btn" data-tab="settings" onclick="switchTab('settings')">
+                        <span class="subnav-icon">⚙️</span>
+                        <span class="subnav-label">Bot y Local</span>
+                    </button>
+                    <button type="button" class="subnav-btn" data-tab="drivers" onclick="switchTab('drivers')">
+                        <span class="subnav-icon">🛵</span>
+                        <span class="subnav-label">Repartidores</span>
+                    </button>
+                    <button type="button" class="subnav-btn" data-tab="whatsapp" onclick="switchTab('whatsapp')">
+                        <span class="subnav-icon">📱</span>
+                        <span class="subnav-label">WhatsApp</span>
+                    </button>
+                    <button type="button" class="subnav-btn" data-tab="sheets" onclick="switchTab('sheets')">
+                        <span class="subnav-icon">📑</span>
+                        <span class="subnav-label">Google Sheets</span>
+                    </button>
+                    <button type="button" class="subnav-btn" data-tab="excel" onclick="switchTab('excel')">
+                        <span class="subnav-icon">📊</span>
+                        <span class="subnav-label">Excel</span>
+                    </button>
+                    <button type="button" class="subnav-btn" data-tab="database" onclick="switchTab('database')">
+                        <span class="subnav-icon">🗄️</span>
+                        <span class="subnav-label">BD Externa</span>
+                    </button>
+                    <button type="button" class="subnav-btn" data-tab="history" onclick="switchTab('history')">
+                        <span class="subnav-icon">📜</span>
+                        <span class="subnav-label">Historial</span>
+                    </button>
+                </div>
             </div>
-            <div class="tabs-scroll-fade fade-right"></div>
         </div>
 
         <!-- Tab: Productos -->
@@ -1407,9 +1424,9 @@
         </div>
 
         <div class="drawer-body">
-            <!-- Grupo: Operaciones y Catálogo -->
+            <!-- Grupo: Catálogo y Oferta -->
             <div class="drawer-group">
-                <span class="drawer-group-title">GESTIÓN Y CATÁLOGO</span>
+                <span class="drawer-group-title">CATÁLOGO & OFERTA</span>
                 <button type="button" class="drawer-item active" data-tab="products" onclick="switchTabAndCloseDrawer('products')">
                     <span class="drawer-item-icon">📦</span>
                     <span class="drawer-item-text">Productos</span>
@@ -1417,14 +1434,6 @@
                 <button type="button" class="drawer-item drawer-clinic-item" data-tab="services" onclick="switchTabAndCloseDrawer('services')" id="drawer-tab-services" style="<%= (store && store.clinic_mode === 1) ? '' : 'display: none;' %>">
                     <span class="drawer-item-icon">⚕️</span>
                     <span class="drawer-item-text">Servicios</span>
-                </button>
-                <button type="button" class="drawer-item drawer-clinic-item" data-tab="doctors" onclick="switchTabAndCloseDrawer('doctors')" id="drawer-tab-doctors" style="<%= (store && store.clinic_mode === 1) ? '' : 'display: none;' %>">
-                    <span class="drawer-item-icon">👨‍⚕️</span>
-                    <span class="drawer-item-text">Doctores</span>
-                </button>
-                <button type="button" class="drawer-item drawer-clinic-item" data-tab="appointments" onclick="switchTabAndCloseDrawer('appointments')" id="drawer-tab-appointments" style="<%= (store && store.clinic_mode === 1) ? '' : 'display: none;' %>">
-                    <span class="drawer-item-icon">📅</span>
-                    <span class="drawer-item-text">Citas</span>
                 </button>
                 <button type="button" class="drawer-item drawer-hostel-item" data-tab="rooms" onclick="switchTabAndCloseDrawer('rooms')" id="drawer-tab-rooms" style="<%= (store && store.hostel_mode === 1) ? '' : 'display: none;' %>">
                     <span class="drawer-item-icon">🛏️</span>
@@ -1434,9 +1443,18 @@
                     <span class="drawer-item-icon">🏨</span>
                     <span class="drawer-item-text">Reservas</span>
                 </button>
-                <button type="button" class="drawer-item" data-tab="drivers" onclick="switchTabAndCloseDrawer('drivers')">
-                    <span class="drawer-item-icon">🛵</span>
-                    <span class="drawer-item-text">Repartidores</span>
+            </div>
+
+            <!-- Grupo: Agenda y Citas (Modo Clínica) -->
+            <div class="drawer-group" id="drawerGroupClinic" style="<%= (store && store.clinic_mode === 1) ? '' : 'display: none;' %>">
+                <span class="drawer-group-title">AGENDA & CITAS</span>
+                <button type="button" class="drawer-item drawer-clinic-item" data-tab="appointments" onclick="switchTabAndCloseDrawer('appointments')" id="drawer-tab-appointments">
+                    <span class="drawer-item-icon">📅</span>
+                    <span class="drawer-item-text">Calendario de Citas</span>
+                </button>
+                <button type="button" class="drawer-item drawer-clinic-item" data-tab="doctors" onclick="switchTabAndCloseDrawer('doctors')" id="drawer-tab-doctors">
+                    <span class="drawer-item-icon">👨‍⚕️</span>
+                    <span class="drawer-item-text">Doctores & Especialistas</span>
                 </button>
             </div>
 
@@ -1452,34 +1470,38 @@
                     <span class="drawer-item-icon">👥</span>
                     <span class="drawer-item-text">Clientes</span>
                 </button>
-                <button type="button" class="drawer-item" data-tab="history" onclick="switchTabAndCloseDrawer('history')">
-                    <span class="drawer-item-icon">📜</span>
-                    <span class="drawer-item-text">Historial de Pedidos</span>
-                </button>
             </div>
 
-            <!-- Grupo: Configuración y Conexiones -->
+            <!-- Grupo: Ajustes y Configuración (Incluye Repartidores e Historial) -->
             <div class="drawer-group">
-                <span class="drawer-group-title">SISTEMA & CONFIGURACIÓN</span>
+                <span class="drawer-group-title">AJUSTES & CONFIGURACIÓN</span>
                 <button type="button" class="drawer-item" data-tab="settings" onclick="switchTabAndCloseDrawer('settings')">
                     <span class="drawer-item-icon">⚙️</span>
-                    <span class="drawer-item-text">Ajustes del Bot</span>
+                    <span class="drawer-item-text">Bot y Local</span>
+                </button>
+                <button type="button" class="drawer-item" data-tab="drivers" onclick="switchTabAndCloseDrawer('drivers')">
+                    <span class="drawer-item-icon">🛵</span>
+                    <span class="drawer-item-text">Repartidores</span>
                 </button>
                 <button type="button" class="drawer-item" data-tab="whatsapp" onclick="switchTabAndCloseDrawer('whatsapp')">
                     <span class="drawer-item-icon">📱</span>
                     <span class="drawer-item-text">Conexión WhatsApp</span>
                 </button>
-                <button type="button" class="drawer-item" data-tab="excel" onclick="switchTabAndCloseDrawer('excel')">
-                    <span class="drawer-item-icon">📊</span>
-                    <span class="drawer-item-text">Excel (Import / Export)</span>
-                </button>
                 <button type="button" class="drawer-item" data-tab="sheets" onclick="switchTabAndCloseDrawer('sheets')">
                     <span class="drawer-item-icon">📑</span>
                     <span class="drawer-item-text">Google Sheets</span>
                 </button>
+                <button type="button" class="drawer-item" data-tab="excel" onclick="switchTabAndCloseDrawer('excel')">
+                    <span class="drawer-item-icon">📊</span>
+                    <span class="drawer-item-text">Excel (Import / Export)</span>
+                </button>
                 <button type="button" class="drawer-item" data-tab="database" onclick="switchTabAndCloseDrawer('database')">
                     <span class="drawer-item-icon">🗄️</span>
                     <span class="drawer-item-text">Base de Datos Externa</span>
+                </button>
+                <button type="button" class="drawer-item" data-tab="history" onclick="switchTabAndCloseDrawer('history')">
+                    <span class="drawer-item-icon">📜</span>
+                    <span class="drawer-item-text">Historial de Pedidos</span>
                 </button>
             </div>
 
@@ -1511,7 +1533,7 @@
 
     <!-- Mobile Bottom Navigation Bar (Acceso Rápido Ergonómico) -->
     <nav class="admin-bottom-nav" id="adminBottomNav" aria-label="Navegación Móvil Inferior">
-        <button type="button" class="b-nav-item active" data-tab="products" onclick="switchTab('products')">
+        <button type="button" class="b-nav-item active" data-module="catalog" onclick="switchModule('catalog')">
             <span class="b-nav-icon">📦</span>
             <span class="b-nav-label">Catálogo</span>
         </button>
@@ -1523,6 +1545,10 @@
         <button type="button" class="b-nav-item" data-tab="customers" onclick="switchTab('customers')">
             <span class="b-nav-icon">👥</span>
             <span class="b-nav-label">Clientes</span>
+        </button>
+        <button type="button" class="b-nav-item" data-module="settings" onclick="switchModule('settings')">
+            <span class="b-nav-icon">⚙️</span>
+            <span class="b-nav-label">Ajustes</span>
         </button>
         <button type="button" class="b-nav-item" onclick="openAdminDrawer()">
             <span class="b-nav-icon">☰</span>
