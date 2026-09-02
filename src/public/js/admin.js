@@ -60,98 +60,107 @@ async function loadCategories() {
     }
 }
 
-// ─── Navegación Jerárquica: Módulos Principales & Submenús ───────────
+// ─── Navegación Moderna de Fila Única & Dropdowns Flotantes ───────────
 
-const MODULE_MAPPING = {
-    products: 'catalog',
-    services: 'catalog',
-    rooms: 'catalog',
-    bookings: 'catalog',
-    appointments: 'appointments',
-    doctors: 'appointments',
-    chats: 'chats',
-    customers: 'customers',
-    settings: 'settings',
-    drivers: 'settings',
-    whatsapp: 'settings',
-    sheets: 'settings',
-    excel: 'settings',
-    database: 'settings',
-    history: 'settings'
-};
-
-const LAST_ACTIVE_SUBTAB = {
-    catalog: 'products',
-    appointments: 'appointments',
-    settings: 'settings'
+const DROPDOWN_PARENT = {
+    products: 'dropdownCatalog',
+    services: 'dropdownCatalog',
+    rooms: 'dropdownCatalog',
+    bookings: 'dropdownCatalog',
+    appointments: 'dropdownAppointments',
+    doctors: 'dropdownAppointments',
+    settings: 'dropdownSettings',
+    drivers: 'dropdownSettings',
+    whatsapp: 'dropdownSettings',
+    sheets: 'dropdownSettings',
+    excel: 'dropdownSettings',
+    database: 'dropdownSettings',
+    history: 'dropdownSettings'
 };
 
 /**
- * Cambiar de Módulo Principal en Nivel 1.
+ * Abrir / Cerrar Dropdown específico.
  */
-function switchModule(moduleName) {
-    if (moduleName === 'chats' || moduleName === 'customers') {
-        switchTab(moduleName);
-        return;
+function toggleNavDropdown(dropdownId, event) {
+    if (event) {
+        event.stopPropagation();
     }
-    const targetSubtab = LAST_ACTIVE_SUBTAB[moduleName] || (
-        moduleName === 'catalog' ? 'products' :
-        moduleName === 'appointments' ? 'appointments' :
-        moduleName === 'settings' ? 'settings' : 'products'
-    );
-    switchTab(targetSubtab);
+    const targetDropdown = document.getElementById(dropdownId);
+    if (!targetDropdown) return;
+    const isOpen = targetDropdown.classList.contains('open');
+
+    // Cerrar cualquier otro dropdown abierto
+    document.querySelectorAll('.nav-dropdown.open').forEach(d => {
+        if (d !== targetDropdown) d.classList.remove('open');
+    });
+
+    if (isOpen) {
+        targetDropdown.classList.remove('open');
+    } else {
+        targetDropdown.classList.add('open');
+    }
 }
 
 /**
- * Cambiar de Pestaña / Submenú.
+ * Seleccionar opción dentro de un dropdown y cerrarlo.
+ */
+function selectDropdownOption(tab, dropdownId) {
+    const dropdown = document.getElementById(dropdownId);
+    if (dropdown) dropdown.classList.remove('open');
+    switchTab(tab);
+}
+
+// Cerrar dropdowns si se hace clic afuera
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.nav-dropdown')) {
+        document.querySelectorAll('.nav-dropdown.open').forEach(d => d.classList.remove('open'));
+    }
+});
+
+// Cerrar con Escape
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        document.querySelectorAll('.nav-dropdown.open').forEach(d => d.classList.remove('open'));
+    }
+});
+
+/**
+ * Cambiar de Pestaña / Sección.
  */
 function switchTab(tab) {
-    const parentModule = MODULE_MAPPING[tab] || tab;
-    if (LAST_ACTIVE_SUBTAB[parentModule]) {
-        LAST_ACTIVE_SUBTAB[parentModule] = tab;
+    // Cerrar dropdowns abiertos
+    document.querySelectorAll('.nav-dropdown.open').forEach(d => d.classList.remove('open'));
+
+    const parentDropdownId = DROPDOWN_PARENT[tab] || null;
+
+    // 1. Activar / Desactivar botones de la barra principal
+    document.querySelectorAll('.modern-nav-btn').forEach(btn => btn.classList.remove('active'));
+
+    if (parentDropdownId) {
+        const trigger = document.querySelector(`#${parentDropdownId} .dropdown-trigger`);
+        if (trigger) trigger.classList.add('active');
+    } else {
+        const directBtn = document.querySelector(`.modern-nav-btn[data-tab="${tab}"]`);
+        if (directBtn) directBtn.classList.add('active');
     }
 
-    // 1. Activar botón del módulo principal activo
-    document.querySelectorAll('.main-nav-btn').forEach(btn => {
-        const mod = btn.getAttribute('data-module');
-        if (mod === parentModule) {
+    // 2. Activar items dentro de los dropdowns, drawer y bottom nav
+    document.querySelectorAll('.dropdown-item, .drawer-item, .b-nav-item').forEach(btn => {
+        if (btn.getAttribute('data-tab') === tab) {
             btn.classList.add('active');
         } else {
             btn.classList.remove('active');
         }
     });
 
-    // 2. Mostrar submenú correspondiente y ocultar los demás
-    document.querySelectorAll('.subnav-group').forEach(group => {
-        const mod = group.getAttribute('data-module');
-        if (mod === parentModule) {
-            group.classList.add('active');
-            group.style.display = 'flex';
-        } else {
-            group.classList.remove('active');
-            group.style.display = 'none';
-        }
-    });
-
-    // 3. Activar botones de submenú, drawer y bottom nav
-    document.querySelectorAll('.subnav-btn, .drawer-item, .b-nav-item').forEach(btn => {
-        const btnTab = btn.getAttribute('data-tab');
-        const btnMod = btn.getAttribute('data-module');
-        if (btnTab === tab || (btnMod && btnMod === parentModule)) {
-            btn.classList.add('active');
-        } else {
-            btn.classList.remove('active');
-        }
-    });
-    
-    // 4. Activar contenido de la sección
+    // 3. Activar contenido de la sección
     document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
     const targetTabContent = document.getElementById(`tab-${tab}`);
     if (targetTabContent) {
         targetTabContent.classList.add('active');
     }
-    
-    // 5. Layout especial y ergonomía para chats
+
+    // 4. Layout especial y ergonomía para chats
     const main = document.querySelector('.admin-main');
     const bottomNav = document.getElementById('adminBottomNav');
     if (main) {
@@ -164,7 +173,7 @@ function switchTab(tab) {
         }
     }
 
-    // 6. Cargar datos según el tab
+    // 5. Cargar datos según el tab
     if (tab === 'products') loadProducts();
     if (tab === 'services') loadProducts();
     if (tab === 'doctors') loadDoctors();
@@ -2491,7 +2500,7 @@ function updateClinicModeUI() {
     const drawerApt = document.getElementById('drawer-tab-appointments');
     const drawerSrv = document.getElementById('drawer-tab-services');
     const drawerDoc = document.getElementById('drawer-tab-doctors');
-    const mainNavAppointments = document.getElementById('main-nav-appointments');
+    const dropdownAppointments = document.getElementById('dropdownAppointments');
     const drawerGroupClinic = document.getElementById('drawerGroupClinic');
 
     if (clinicModeEnabled) {
@@ -2501,11 +2510,11 @@ function updateClinicModeUI() {
         if (onBtn) onBtn.style.display = 'none';
         if (offBtn) offBtn.style.display = 'inline-flex';
         if (clinicSettings) clinicSettings.style.display = 'block';
-        if (mainNavAppointments) mainNavAppointments.style.display = 'inline-flex';
+        if (dropdownAppointments) dropdownAppointments.style.display = 'inline-block';
         if (drawerGroupClinic) drawerGroupClinic.style.display = 'block';
-        if (appointmentsTab) appointmentsTab.style.display = 'inline-flex';
-        if (servicesTab) servicesTab.style.display = 'inline-flex';
-        if (doctorsTab) doctorsTab.style.display = 'inline-flex';
+        if (appointmentsTab) appointmentsTab.style.display = 'flex';
+        if (servicesTab) servicesTab.style.display = 'flex';
+        if (doctorsTab) doctorsTab.style.display = 'flex';
         if (drawerApt) drawerApt.style.display = 'flex';
         if (drawerSrv) drawerSrv.style.display = 'flex';
         if (drawerDoc) drawerDoc.style.display = 'flex';
@@ -2516,7 +2525,7 @@ function updateClinicModeUI() {
         if (onBtn) onBtn.style.display = 'inline-flex';
         if (offBtn) offBtn.style.display = 'none';
         if (clinicSettings) clinicSettings.style.display = 'none';
-        if (mainNavAppointments) mainNavAppointments.style.display = 'none';
+        if (dropdownAppointments) dropdownAppointments.style.display = 'none';
         if (drawerGroupClinic) drawerGroupClinic.style.display = 'none';
         if (appointmentsTab) appointmentsTab.style.display = 'none';
         if (servicesTab) servicesTab.style.display = 'none';

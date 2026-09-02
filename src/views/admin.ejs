@@ -64,100 +64,162 @@
     </header>
 
     <main class="admin-main">
-        <!-- Navegación Jerárquica: Módulos Principales y Submenús Contextuales -->
-        <div class="admin-navigation-system">
-            <!-- Nivel 1: Barra de Módulos Principales -->
-            <nav class="admin-main-nav" id="adminMainNav" aria-label="Módulos Principales">
-                <button type="button" class="main-nav-btn active" data-module="catalog" onclick="switchModule('catalog')">
-                    <span class="main-nav-icon">📦</span>
-                    <span class="main-nav-label">Catálogo</span>
-                </button>
-                <button type="button" class="main-nav-btn" data-module="appointments" id="main-nav-appointments" onclick="switchModule('appointments')" style="<%= (store && store.clinic_mode === 1) ? '' : 'display: none;' %>">
-                    <span class="main-nav-icon">📅</span>
-                    <span class="main-nav-label">Citas</span>
-                </button>
-                <button type="button" class="main-nav-btn" data-module="chats" data-tab="chats" onclick="switchTab('chats')">
-                    <span class="main-nav-icon">💬</span>
-                    <span class="main-nav-label">Chats</span>
-                    <span class="badge-red" id="chatsHandoffBadge" style="display: none;">!</span>
-                </button>
-                <button type="button" class="main-nav-btn" data-module="customers" data-tab="customers" onclick="switchTab('customers')">
-                    <span class="main-nav-icon">👥</span>
-                    <span class="main-nav-label">Clientes</span>
-                </button>
-                <button type="button" class="main-nav-btn" data-module="settings" onclick="switchModule('settings')">
-                    <span class="main-nav-icon">⚙️</span>
-                    <span class="main-nav-label">Ajustes</span>
-                </button>
-            </nav>
-
-            <!-- Nivel 2: Submenús Contextuales por Módulo -->
-            <div class="admin-subnav-bar" id="adminSubnavBar">
-                <!-- Submenú: Catálogo -->
-                <div class="subnav-group active" id="subnav-catalog" data-module="catalog">
-                    <button type="button" class="subnav-btn active" data-tab="products" onclick="switchTab('products')">
-                        <span class="subnav-icon">📦</span>
-                        <span class="subnav-label">Productos</span>
+        <!-- Barra de Navegación Moderna de Fila Única con Dropdowns Desplegables -->
+        <nav class="admin-modern-navbar" id="adminModernNav" aria-label="Navegación Principal">
+            <!-- 1. Catálogo (Dropdown si tiene servicios/hostel, o directo si es solo productos) -->
+            <% if ((store && store.clinic_mode === 1) || (store && store.hostel_mode === 1)) { %>
+                <div class="nav-dropdown" id="dropdownCatalog">
+                    <button type="button" class="modern-nav-btn dropdown-trigger active" id="triggerCatalog" onclick="toggleNavDropdown('dropdownCatalog', event)">
+                        <span class="btn-icon">📦</span>
+                        <span class="btn-text">Catálogo</span>
+                        <span class="dropdown-arrow">▾</span>
                     </button>
-                    <button type="button" class="subnav-btn" data-tab="services" onclick="switchTab('services')" id="tab-services-btn" style="<%= (store && store.clinic_mode === 1) ? '' : 'display: none;' %>">
-                        <span class="subnav-icon">⚕️</span>
-                        <span class="subnav-label">Servicios</span>
-                    </button>
-                    <button type="button" class="subnav-btn" data-tab="rooms" onclick="switchTab('rooms')" id="tab-rooms-btn" style="<%= (store && store.hostel_mode === 1) ? '' : 'display: none;' %>">
-                        <span class="subnav-icon">🛏️</span>
-                        <span class="subnav-label">Habitaciones</span>
-                    </button>
-                    <button type="button" class="subnav-btn" data-tab="bookings" onclick="switchTab('bookings')" id="tab-bookings-btn" style="<%= (store && store.hostel_mode === 1) ? '' : 'display: none;' %>">
-                        <span class="subnav-icon">🏨</span>
-                        <span class="subnav-label">Reservas</span>
-                    </button>
+                    <div class="dropdown-panel">
+                        <button type="button" class="dropdown-item active" data-tab="products" onclick="selectDropdownOption('products', 'dropdownCatalog')">
+                            <span class="dropdown-item-icon">📦</span>
+                            <div class="dropdown-item-content">
+                                <span class="dropdown-item-name">Productos</span>
+                                <span class="dropdown-item-sub">Inventario, precios y stock</span>
+                            </div>
+                        </button>
+                        <button type="button" class="dropdown-item" data-tab="services" onclick="selectDropdownOption('services', 'dropdownCatalog')" id="tab-services-btn" style="<%= (store && store.clinic_mode === 1) ? '' : 'display: none;' %>">
+                            <span class="dropdown-item-icon">⚕️</span>
+                            <div class="dropdown-item-content">
+                                <span class="dropdown-item-name">Servicios</span>
+                                <span class="dropdown-item-sub">Tratamientos y duración</span>
+                            </div>
+                        </button>
+                        <button type="button" class="dropdown-item" data-tab="rooms" onclick="selectDropdownOption('rooms', 'dropdownCatalog')" id="tab-rooms-btn" style="<%= (store && store.hostel_mode === 1) ? '' : 'display: none;' %>">
+                            <span class="dropdown-item-icon">🛏️</span>
+                            <div class="dropdown-item-content">
+                                <span class="dropdown-item-name">Habitaciones</span>
+                                <span class="dropdown-item-sub">Tipos de habitación y camas</span>
+                            </div>
+                        </button>
+                        <button type="button" class="dropdown-item" data-tab="bookings" onclick="selectDropdownOption('bookings', 'dropdownCatalog')" id="tab-bookings-btn" style="<%= (store && store.hostel_mode === 1) ? '' : 'display: none;' %>">
+                            <span class="dropdown-item-icon">🏨</span>
+                            <div class="dropdown-item-content">
+                                <span class="dropdown-item-name">Reservas</span>
+                                <span class="dropdown-item-sub">Huéspedes y ocupación</span>
+                            </div>
+                        </button>
+                    </div>
                 </div>
+            <% } else { %>
+                <button type="button" class="modern-nav-btn active" data-tab="products" onclick="switchTab('products')">
+                    <span class="btn-icon">📦</span>
+                    <span class="btn-text">Catálogo</span>
+                </button>
+            <% } %>
 
-                <!-- Submenú: Citas / Salud -->
-                <div class="subnav-group" id="subnav-appointments" data-module="appointments" style="display: none;">
-                    <button type="button" class="subnav-btn" data-tab="appointments" onclick="switchTab('appointments')" id="tab-appointments-btn">
-                        <span class="subnav-icon">📅</span>
-                        <span class="subnav-label">Calendario de Citas</span>
+            <!-- 2. Citas (Dropdown para modo clínica) -->
+            <div class="nav-dropdown" id="dropdownAppointments" style="<%= (store && store.clinic_mode === 1) ? '' : 'display: none;' %>">
+                <button type="button" class="modern-nav-btn dropdown-trigger" id="triggerAppointments" onclick="toggleNavDropdown('dropdownAppointments', event)">
+                    <span class="btn-icon">📅</span>
+                    <span class="btn-text">Citas</span>
+                    <span class="dropdown-arrow">▾</span>
+                </button>
+                <div class="dropdown-panel">
+                    <button type="button" class="dropdown-item" data-tab="appointments" onclick="selectDropdownOption('appointments', 'dropdownAppointments')" id="tab-appointments-btn">
+                        <span class="dropdown-item-icon">📅</span>
+                        <div class="dropdown-item-content">
+                            <span class="dropdown-item-name">Calendario de Citas</span>
+                            <span class="dropdown-item-sub">Agenda, turnos y horarios</span>
+                        </div>
                     </button>
-                    <button type="button" class="subnav-btn" data-tab="doctors" onclick="switchTab('doctors')" id="tab-doctors-btn">
-                        <span class="subnav-icon">👨‍⚕️</span>
-                        <span class="subnav-label">Doctores & Especialistas</span>
-                    </button>
-                </div>
-
-                <!-- Submenú: Ajustes & Configuración -->
-                <div class="subnav-group" id="subnav-settings" data-module="settings" style="display: none;">
-                    <button type="button" class="subnav-btn" data-tab="settings" onclick="switchTab('settings')">
-                        <span class="subnav-icon">⚙️</span>
-                        <span class="subnav-label">Bot y Local</span>
-                    </button>
-                    <button type="button" class="subnav-btn" data-tab="drivers" onclick="switchTab('drivers')">
-                        <span class="subnav-icon">🛵</span>
-                        <span class="subnav-label">Repartidores</span>
-                    </button>
-                    <button type="button" class="subnav-btn" data-tab="whatsapp" onclick="switchTab('whatsapp')">
-                        <span class="subnav-icon">📱</span>
-                        <span class="subnav-label">WhatsApp</span>
-                    </button>
-                    <button type="button" class="subnav-btn" data-tab="sheets" onclick="switchTab('sheets')">
-                        <span class="subnav-icon">📑</span>
-                        <span class="subnav-label">Google Sheets</span>
-                    </button>
-                    <button type="button" class="subnav-btn" data-tab="excel" onclick="switchTab('excel')">
-                        <span class="subnav-icon">📊</span>
-                        <span class="subnav-label">Excel</span>
-                    </button>
-                    <button type="button" class="subnav-btn" data-tab="database" onclick="switchTab('database')">
-                        <span class="subnav-icon">🗄️</span>
-                        <span class="subnav-label">BD Externa</span>
-                    </button>
-                    <button type="button" class="subnav-btn" data-tab="history" onclick="switchTab('history')">
-                        <span class="subnav-icon">📜</span>
-                        <span class="subnav-label">Historial</span>
+                    <button type="button" class="dropdown-item" data-tab="doctors" onclick="selectDropdownOption('doctors', 'dropdownAppointments')" id="tab-doctors-btn">
+                        <span class="dropdown-item-icon">👨‍⚕️</span>
+                        <div class="dropdown-item-content">
+                            <span class="dropdown-item-name">Doctores & Especialistas</span>
+                            <span class="dropdown-item-sub">Médicos y profesionales</span>
+                        </div>
                     </button>
                 </div>
             </div>
-        </div>
+
+            <!-- 3. Chats (Acceso directo con badge) -->
+            <button type="button" class="modern-nav-btn" data-tab="chats" onclick="switchTab('chats')">
+                <span class="btn-icon">💬</span>
+                <span class="btn-text">Chats</span>
+                <span class="badge-red" id="chatsHandoffBadge" style="display: none;">!</span>
+            </button>
+
+            <!-- 4. Clientes (Acceso directo) -->
+            <button type="button" class="modern-nav-btn" data-tab="customers" onclick="switchTab('customers')">
+                <span class="btn-icon">👥</span>
+                <span class="btn-text">Clientes</span>
+            </button>
+
+            <!-- 5. Ajustes (Dropdown Desplegable Flotante Moderno) -->
+            <div class="nav-dropdown" id="dropdownSettings">
+                <button type="button" class="modern-nav-btn dropdown-trigger" id="triggerSettings" onclick="toggleNavDropdown('dropdownSettings', event)">
+                    <span class="btn-icon">⚙️</span>
+                    <span class="btn-text">Ajustes</span>
+                    <span class="dropdown-arrow">▾</span>
+                </button>
+                <div class="dropdown-panel dropdown-panel-right">
+                    <div class="dropdown-panel-header">CONFIGURACIÓN DEL SISTEMA</div>
+                    
+                    <button type="button" class="dropdown-item" data-tab="settings" onclick="selectDropdownOption('settings', 'dropdownSettings')">
+                        <span class="dropdown-item-icon">⚙️</span>
+                        <div class="dropdown-item-content">
+                            <span class="dropdown-item-name">Bot y Local</span>
+                            <span class="dropdown-item-sub">Prompts de IA, horarios y datos</span>
+                        </div>
+                    </button>
+                    
+                    <button type="button" class="dropdown-item" data-tab="drivers" onclick="selectDropdownOption('drivers', 'dropdownSettings')">
+                        <span class="dropdown-item-icon">🛵</span>
+                        <div class="dropdown-item-content">
+                            <span class="dropdown-item-name">Repartidores</span>
+                            <span class="dropdown-item-sub">Gestión de delivery y tarifas</span>
+                        </div>
+                    </button>
+                    
+                    <button type="button" class="dropdown-item" data-tab="whatsapp" onclick="selectDropdownOption('whatsapp', 'dropdownSettings')">
+                        <span class="dropdown-item-icon">📱</span>
+                        <div class="dropdown-item-content">
+                            <span class="dropdown-item-name">Conexión WhatsApp</span>
+                            <span class="dropdown-item-sub">Código QR y Meta Cloud API</span>
+                        </div>
+                    </button>
+                    
+                    <button type="button" class="dropdown-item" data-tab="sheets" onclick="selectDropdownOption('sheets', 'dropdownSettings')">
+                        <span class="dropdown-item-icon">📑</span>
+                        <div class="dropdown-item-content">
+                            <span class="dropdown-item-name">Google Sheets</span>
+                            <span class="dropdown-item-sub">Sincronización de catálogo en la nube</span>
+                        </div>
+                    </button>
+                    
+                    <button type="button" class="dropdown-item" data-tab="excel" onclick="selectDropdownOption('excel', 'dropdownSettings')">
+                        <span class="dropdown-item-icon">📊</span>
+                        <div class="dropdown-item-content">
+                            <span class="dropdown-item-name">Excel (Import / Export)</span>
+                            <span class="dropdown-item-sub">Planillas .xlsx y .csv</span>
+                        </div>
+                    </button>
+                    
+                    <button type="button" class="dropdown-item" data-tab="database" onclick="selectDropdownOption('database', 'dropdownSettings')">
+                        <span class="dropdown-item-icon">🗄️</span>
+                        <div class="dropdown-item-content">
+                            <span class="dropdown-item-name">Base de Datos Externa</span>
+                            <span class="dropdown-item-sub">Conexión MySQL / PostgreSQL</span>
+                        </div>
+                    </button>
+                    
+                    <div class="dropdown-divider"></div>
+                    
+                    <button type="button" class="dropdown-item" data-tab="history" onclick="selectDropdownOption('history', 'dropdownSettings')">
+                        <span class="dropdown-item-icon">📜</span>
+                        <div class="dropdown-item-content">
+                            <span class="dropdown-item-name">Historial de Pedidos</span>
+                            <span class="dropdown-item-sub">Auditoría y pedidos pasados</span>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        </nav>
 
         <!-- Tab: Productos -->
         <section class="tab-content active" id="tab-products">
