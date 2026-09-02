@@ -207,6 +207,12 @@ function runMigrations() {
     try { db.prepare("ALTER TABLE stores ADD COLUMN suspended INTEGER DEFAULT 0").run(); } catch(e) {}
     try { db.prepare("ALTER TABLE stores ADD COLUMN suspended_reason TEXT DEFAULT ''").run(); } catch(e) {}
 
+    // Google Sheets Connector por tenant
+    try { db.prepare("ALTER TABLE stores ADD COLUMN google_sheet_url TEXT DEFAULT ''").run(); } catch(e) {}
+    try { db.prepare("ALTER TABLE stores ADD COLUMN google_sheet_mapping TEXT DEFAULT ''").run(); } catch(e) {}
+    try { db.prepare("ALTER TABLE stores ADD COLUMN google_sheet_sync_mode TEXT DEFAULT 'upsert'").run(); } catch(e) {}
+    try { db.prepare("ALTER TABLE stores ADD COLUMN google_sheet_last_sync DATETIME").run(); } catch(e) {}
+
     // Tabla de auditoría SaaS
     try {
         db.prepare(`

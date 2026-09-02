@@ -60,30 +60,42 @@ async function loadCategories() {
     }
 }
 
-// ─── Tabs ──────────────────────────────────────
+// ─── Tabs & Navegación Moderna (Desktop & Mobile) ───────────
 function switchTab(tab) {
-    // Desactivar todos los tabs
-    document.querySelectorAll('.tab-btn, .dropdown-item').forEach(btn => btn.classList.remove('active'));
+    // Desactivar todos los tabs en barra horizontal, dropdowns, drawer y bottom nav
+    document.querySelectorAll('.tab-btn, .dropdown-item, .drawer-item, .b-nav-item').forEach(btn => btn.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
 
-    // Activar el tab seleccionado
-    const selectedTabBtn = document.querySelector(`[data-tab="${tab}"]`);
-    if (selectedTabBtn) {
-        selectedTabBtn.classList.add('active');
-    }
+    // Activar todos los botones correspondientes a esta pestaña
+    document.querySelectorAll(`[data-tab="${tab}"]`).forEach(btn => {
+        btn.classList.add('active');
+    });
     
+    // Activar contenido de la pestaña
     const targetTabContent = document.getElementById(`tab-${tab}`);
     if (targetTabContent) {
         targetTabContent.classList.add('active');
     }
     
-    // Layout especial para chats
+    // Auto-scroll horizontal suave en la barra de pestañas para mantener el elemento visible
+    const activeTabPill = document.querySelector(`.admin-tabs [data-tab="${tab}"]`);
+    if (activeTabPill) {
+        activeTabPill.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    }
+
+    // Actualizar desvanecimientos laterales de scroll
+    updateTabsScrollFades();
+    
+    // Layout especial y ergonomía para chats
     const main = document.querySelector('.admin-main');
+    const bottomNav = document.getElementById('adminBottomNav');
     if (main) {
         if (tab === 'chats') {
             main.classList.add('chat-mode');
+            if (bottomNav) bottomNav.style.display = 'none';
         } else {
             main.classList.remove('chat-mode');
+            if (bottomNav) bottomNav.style.display = '';
         }
     }
 
@@ -100,6 +112,99 @@ function switchTab(tab) {
     if (tab === 'customers') loadCustomers();
     if (tab === 'whatsapp') { loadWhatsAppConfig(); loadBotStatus(); }
     if (tab === 'settings') { loadStoreSettings(); loadClinicMode(); loadHostelMode(); }
+    if (tab === 'sheets') loadGoogleSheetsConfig();
+}
+
+/**
+ * Cambiar tab y cerrar el drawer móvil automáticamente.
+ */
+function switchTabAndCloseDrawer(tab) {
+    switchTab(tab);
+    closeAdminDrawer();
+}
+
+/**
+ * Abrir el Drawer Lateral Móvil.
+ */
+function openAdminDrawer() {
+    const drawer = document.getElementById('adminDrawer');
+    const overlay = document.getElementById('adminDrawerOverlay');
+    if (drawer) drawer.classList.add('open');
+    if (overlay) overlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+}
+
+/**
+ * Cerrar el Drawer Lateral Móvil.
+ */
+function closeAdminDrawer() {
+    const drawer = document.getElementById('adminDrawer');
+    const overlay = document.getElementById('adminDrawerOverlay');
+    if (drawer) drawer.classList.remove('open');
+    if (overlay) overlay.classList.remove('open');
+    document.body.style.overflow = '';
+}
+
+/**
+ * Alternar apertura del Drawer.
+ */
+function toggleAdminDrawer() {
+    const drawer = document.getElementById('adminDrawer');
+    if (drawer && drawer.classList.contains('open')) {
+        closeAdminDrawer();
+    } else {
+        openAdminDrawer();
+    }
+}
+
+/**
+ * Conmutar tema global y sincronizar icono del drawer.
+ */
+function toggleThemeGlobal() {
+    const themeBtn = document.getElementById('themeToggleBtn');
+    if (themeBtn) {
+        themeBtn.click();
+        const drawerThemeIcon = document.getElementById('drawerThemeIcon');
+        if (drawerThemeIcon) {
+            drawerThemeIcon.textContent = themeBtn.textContent || '🌙';
+        }
+    }
+}
+
+/**
+ * Actualizar opacidad de indicadores de scroll en la barra horizontal.
+ */
+function updateTabsScrollFades() {
+    const tabsBar = document.getElementById('adminTabsBar');
+    const fadeLeft = document.querySelector('.tabs-scroll-fade.fade-left');
+    const fadeRight = document.querySelector('.tabs-scroll-fade.fade-right');
+    if (!tabsBar || !fadeLeft || !fadeRight) return;
+
+    const scrollLeft = tabsBar.scrollLeft;
+    const maxScroll = tabsBar.scrollWidth - tabsBar.clientWidth;
+
+    fadeLeft.style.opacity = scrollLeft > 10 ? '0.9' : '0';
+    fadeRight.style.opacity = scrollLeft < (maxScroll - 10) ? '0.9' : '0';
+}
+
+// Inicializar listener de scroll en la barra horizontal
+document.addEventListener('DOMContentLoaded', () => {
+    const tabsBar = document.getElementById('adminTabsBar');
+    if (tabsBar) {
+        tabsBar.addEventListener('scroll', updateTabsScrollFades, { passive: true });
+        updateTabsScrollFades();
+    }
+});
+
+/**
+ * Sincronizar todos los badges de alerta de handoff humano (barra, drawer y bottom nav).
+ */
+function updateHandoffBadges(show) {
+    const displayVal = show ? 'inline-block' : 'none';
+    ['chatsHandoffBadge', 'chatsHandoffBadgeDrawer', 'chatsHandoffBadgeBottom'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = displayVal;
+    });
 }
 
 // ─── Productos CRUD ────────────────────────────
@@ -575,7 +680,7 @@ function initSockets() {
     socket.on('chat-handoff', (data) => {
         console.log('🚨 Handoff recibido:', data);
         showToast(`🚨 Cliente ${data.customer_phone} requiere atención humana`, 'error');
-        document.getElementById('chatsHandoffBadge').style.display = 'inline-block';
+        updateHandoffBadges(true);
         playBeepAlert();
         
         // Si estamos en la pestaña chats, recargar lista
@@ -690,7 +795,7 @@ async function checkActiveHandoffs() {
         if (!res.ok) return;
         const chats = await res.json();
         const hasHandoff = chats.some(c => c.needs_human);
-        document.getElementById('chatsHandoffBadge').style.display = hasHandoff ? 'inline-block' : 'none';
+        updateHandoffBadges(hasHandoff);
     } catch (e) {
         console.error(e);
     }
@@ -2318,6 +2423,9 @@ function updateClinicModeUI() {
     const appointmentsTab = document.getElementById('tab-appointments-btn');
     const servicesTab = document.getElementById('tab-services-btn');
     const doctorsTab = document.getElementById('tab-doctors-btn');
+    const drawerApt = document.getElementById('drawer-tab-appointments');
+    const drawerSrv = document.getElementById('drawer-tab-services');
+    const drawerDoc = document.getElementById('drawer-tab-doctors');
 
     if (clinicModeEnabled) {
         if (badge) { badge.style.background = '#dbeafe'; badge.style.color = '#2563eb'; }
@@ -2329,6 +2437,9 @@ function updateClinicModeUI() {
         if (appointmentsTab) appointmentsTab.style.display = 'inline-flex';
         if (servicesTab) servicesTab.style.display = 'inline-flex';
         if (doctorsTab) doctorsTab.style.display = 'inline-flex';
+        if (drawerApt) drawerApt.style.display = 'flex';
+        if (drawerSrv) drawerSrv.style.display = 'flex';
+        if (drawerDoc) drawerDoc.style.display = 'flex';
     } else {
         if (badge) { badge.style.background = '#dcfce7'; badge.style.color = '#16a34a'; }
         if (dot) dot.style.background = '#16a34a';
@@ -2339,6 +2450,9 @@ function updateClinicModeUI() {
         if (appointmentsTab) appointmentsTab.style.display = 'none';
         if (servicesTab) servicesTab.style.display = 'none';
         if (doctorsTab) doctorsTab.style.display = 'none';
+        if (drawerApt) drawerApt.style.display = 'none';
+        if (drawerSrv) drawerSrv.style.display = 'none';
+        if (drawerDoc) drawerDoc.style.display = 'none';
     }
 }
 
@@ -2922,6 +3036,397 @@ function exportExcel(format) {
     window.location.href = `/api/excel/export?format=${format}`;
 }
 
+// ─── Google Sheets Connector ────────────────────────────
+
+let lastSheetsPreviewData = null;
+
+/**
+ * Cargar configuración guardada de Google Sheets.
+ */
+async function loadGoogleSheetsConfig() {
+    try {
+        const res = await fetch('/api/sheets/config');
+        if (!res.ok) return;
+        const data = await res.json();
+        
+        if (data.success && data.sheetUrl) {
+            const urlInput = document.getElementById('googleSheetUrl');
+            if (urlInput) urlInput.value = data.sheetUrl;
+
+            const quickSyncCard = document.getElementById('sheetsQuickSyncCard');
+            const currentUrlLink = document.getElementById('sheetsCurrentUrlLink');
+            const lastSyncText = document.getElementById('sheetsLastSyncText');
+
+            if (quickSyncCard) quickSyncCard.style.display = 'block';
+            if (currentUrlLink) currentUrlLink.href = data.sheetUrl;
+            if (lastSyncText) {
+                if (data.lastSync) {
+                    const d = new Date(data.lastSync);
+                    lastSyncText.textContent = `Última sincronización: ${d.toLocaleDateString()} a las ${d.toLocaleTimeString()}`;
+                } else {
+                    lastSyncText.textContent = 'Última sincronización: Pendiente';
+                }
+            }
+
+            if (data.syncMode) {
+                const radio = document.querySelector(`input[name="sheetsSyncMode"][value="${data.syncMode}"]`);
+                if (radio) radio.checked = true;
+            }
+
+            // Si aún no se ha previsualizado, disparar previsualización silenciosa
+            if (!lastSheetsPreviewData) {
+                previewGoogleSheetSilent(data.sheetUrl, data.mapping);
+            }
+        }
+    } catch (e) {
+        console.error('Error al cargar configuración de Google Sheets:', e);
+    }
+}
+
+/**
+ * Previsualización silenciosa al cargar la configuración existente.
+ */
+async function previewGoogleSheetSilent(sheetUrl, savedMapping) {
+    try {
+        const res = await fetch('/api/sheets/preview', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sheetUrl })
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.success) {
+            lastSheetsPreviewData = data;
+            renderSheetsMappingAndPreview(data, savedMapping || data.suggestedMapping);
+        }
+    } catch (e) {
+        // Silencioso
+    }
+}
+
+/**
+ * Previsualizar hoja de cálculo de Google Sheets.
+ */
+async function previewGoogleSheet(e) {
+    if (e && e.preventDefault) e.preventDefault();
+
+    const urlInput = document.getElementById('googleSheetUrl');
+    const sheetUrl = urlInput ? urlInput.value.trim() : '';
+
+    if (!sheetUrl) {
+        showToast('⚠️ Ingresá el enlace de tu Google Sheet', 'error');
+        return;
+    }
+
+    const btn = document.getElementById('btnPreviewSheets');
+    const statusDiv = document.getElementById('sheetsPreviewStatus');
+    const mappingSection = document.getElementById('sheetsMappingSection');
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span>⏳</span> Conectando...';
+    }
+
+    if (statusDiv) {
+        statusDiv.style.display = 'block';
+        statusDiv.style.background = 'rgba(59, 130, 246, 0.1)';
+        statusDiv.style.color = '#2563eb';
+        statusDiv.style.border = '1px solid rgba(59, 130, 246, 0.2)';
+        statusDiv.innerHTML = '🔄 Descargando y leyendo datos de la planilla...';
+    }
+
+    try {
+        const res = await fetch('/api/sheets/preview', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sheetUrl })
+        });
+
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+            lastSheetsPreviewData = data;
+
+            if (statusDiv) {
+                statusDiv.style.background = '#dcfce7';
+                statusDiv.style.color = '#16a34a';
+                statusDiv.style.border = '1px solid #bbf7d0';
+                statusDiv.innerHTML = `✅ <strong>Conexión exitosa:</strong> Se detectaron ${data.totalRows} filas y ${data.headers.length} columnas en la planilla.`;
+            }
+
+            renderSheetsMappingAndPreview(data, data.suggestedMapping);
+            showToast(`✅ Planilla conectada (${data.totalRows} filas)`, 'success');
+        } else {
+            if (statusDiv) {
+                statusDiv.style.background = '#fee2e2';
+                statusDiv.style.color = '#dc2626';
+                statusDiv.style.border = '1px solid #fecaca';
+                statusDiv.innerHTML = `❌ <strong>Error al conectar:</strong> ${data.error || 'No se pudo leer la planilla'}`;
+            }
+            if (mappingSection) mappingSection.style.display = 'none';
+            showToast(data.error || 'Error al conectar Google Sheet', 'error');
+        }
+    } catch (err) {
+        if (statusDiv) {
+            statusDiv.style.background = '#fee2e2';
+            statusDiv.style.color = '#dc2626';
+            statusDiv.style.border = '1px solid #fecaca';
+            statusDiv.innerHTML = `❌ <strong>Error de conexión:</strong> ${err.message}`;
+        }
+        showToast('Error al conectar con Google Sheets', 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<span>🔍</span> Conectar y Previsualizar';
+        }
+    }
+}
+
+/**
+ * Renderiza los selectores de mapeo de columnas y la tabla de previsualización.
+ */
+function renderSheetsMappingAndPreview(data, selectedMapping = {}) {
+    const mappingSection = document.getElementById('sheetsMappingSection');
+    const totalRowsBadge = document.getElementById('sheetsTotalRowsBadge');
+    if (mappingSection) mappingSection.style.display = 'block';
+    if (totalRowsBadge) totalRowsBadge.textContent = `${data.totalRows} filas detectadas`;
+
+    const fields = [
+        { id: 'sheetsMapName', key: 'name', required: true },
+        { id: 'sheetsMapPrice', key: 'price', required: true },
+        { id: 'sheetsMapCategory', key: 'category', required: false },
+        { id: 'sheetsMapDescription', key: 'description', required: false },
+        { id: 'sheetsMapIsService', key: 'is_service', required: false },
+        { id: 'sheetsMapDuration', key: 'duration', required: false },
+        { id: 'sheetsMapAvailable', key: 'available', required: false },
+        { id: 'sheetsMapImage', key: 'image_path', required: false }
+    ];
+
+    fields.forEach(f => {
+        const select = document.getElementById(f.id);
+        if (!select) return;
+
+        select.innerHTML = '';
+        if (!f.required) {
+            const optNone = document.createElement('option');
+            optNone.value = '';
+            optNone.textContent = '-- No asignar / Opcional --';
+            select.appendChild(optNone);
+        } else {
+            const optPrompt = document.createElement('option');
+            optPrompt.value = '';
+            optPrompt.textContent = '-- Seleccionar columna obligatoria --';
+            select.appendChild(optPrompt);
+        }
+
+        data.headers.forEach(h => {
+            const opt = document.createElement('option');
+            opt.value = h;
+            opt.textContent = h;
+            select.appendChild(opt);
+        });
+
+        // Preseleccionar si hay valor
+        const targetVal = selectedMapping ? selectedMapping[f.key] : null;
+        if (targetVal && data.headers.includes(targetVal)) {
+            select.value = targetVal;
+        }
+    });
+
+    // Renderizar tabla de muestra
+    const table = document.getElementById('sheetsPreviewTable');
+    if (table && data.sampleRows && data.sampleRows.length > 0) {
+        let html = '<thead><tr>';
+        data.headers.forEach(h => {
+            html += `<th style="padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border-color); background: var(--bg-surface); white-space: nowrap;">${escapeHtml(h)}</th>`;
+        });
+        html += '</tr></thead><tbody>';
+
+        data.sampleRows.forEach(row => {
+            html += '<tr>';
+            data.headers.forEach(h => {
+                html += `<td style="padding: 8px 12px; border-bottom: 1px solid var(--border-color); white-space: nowrap;">${escapeHtml(String(row[h] !== undefined ? row[h] : ''))}</td>`;
+            });
+            html += '</tr>';
+        });
+
+        html += '</tbody>';
+        table.innerHTML = html;
+    }
+}
+
+/**
+ * Importar productos desde Google Sheets con mapeo confirmado.
+ */
+async function importGoogleSheetProducts() {
+    const urlInput = document.getElementById('googleSheetUrl');
+    const sheetUrl = urlInput ? urlInput.value.trim() : '';
+
+    const nameCol = document.getElementById('sheetsMapName') ? document.getElementById('sheetsMapName').value : '';
+    const priceCol = document.getElementById('sheetsMapPrice') ? document.getElementById('sheetsMapPrice').value : '';
+
+    if (!sheetUrl) {
+        showToast('⚠️ Ingresá el enlace de la planilla', 'error');
+        return;
+    }
+
+    if (!nameCol || !priceCol) {
+        showToast('❌ Mapeá al menos las columnas de Nombre y Precio', 'error');
+        return;
+    }
+
+    const syncModeRadio = document.querySelector('input[name="sheetsSyncMode"]:checked');
+    const syncMode = syncModeRadio ? syncModeRadio.value : 'upsert';
+
+    const columnMapping = {
+        name: nameCol,
+        price: priceCol,
+        category: document.getElementById('sheetsMapCategory') ? document.getElementById('sheetsMapCategory').value : '',
+        description: document.getElementById('sheetsMapDescription') ? document.getElementById('sheetsMapDescription').value : '',
+        is_service: document.getElementById('sheetsMapIsService') ? document.getElementById('sheetsMapIsService').value : '',
+        duration: document.getElementById('sheetsMapDuration') ? document.getElementById('sheetsMapDuration').value : '',
+        available: document.getElementById('sheetsMapAvailable') ? document.getElementById('sheetsMapAvailable').value : '',
+        image_path: document.getElementById('sheetsMapImage') ? document.getElementById('sheetsMapImage').value : ''
+    };
+
+    const btn = document.getElementById('btnImportSheets');
+    const resultDiv = document.getElementById('sheetsImportResult');
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span>⏳</span> Sincronizando catálogo...';
+    }
+
+    if (resultDiv) {
+        resultDiv.style.display = 'block';
+        resultDiv.style.background = 'rgba(59, 130, 246, 0.1)';
+        resultDiv.style.color = '#2563eb';
+        resultDiv.innerHTML = '🔄 Procesando filas y guardando en la base de datos...';
+    }
+
+    try {
+        const res = await fetch('/api/sheets/import', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                sheetUrl,
+                columnMapping,
+                syncMode
+            })
+        });
+
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+            if (resultDiv) {
+                resultDiv.style.background = '#dcfce7';
+                resultDiv.style.color = '#16a34a';
+                resultDiv.innerHTML = `
+                    <div style="font-weight: 700; margin-bottom: 4px;">✅ Sincronización exitosa</div>
+                    <div>${data.inserted} productos nuevos agregados, ${data.updated} productos existentes actualizados.</div>
+                    ${data.errors && data.errors.length > 0 ? `<div style="font-size: 0.8rem; color: #b45309; margin-top: 6px;">⚠️ ${data.errors.length} observaciones registradas.</div>` : ''}
+                `;
+            }
+
+            showToast(`✅ Catálogo sincronizado (${data.inserted + data.updated} items)`, 'success');
+            loadProducts();
+            loadGoogleSheetsConfig();
+        } else {
+            if (resultDiv) {
+                resultDiv.style.background = '#fee2e2';
+                resultDiv.style.color = '#dc2626';
+                resultDiv.innerHTML = `❌ <strong>Error:</strong> ${data.error || 'No se pudo sincronizar el catálogo'}`;
+            }
+            showToast(data.error || 'Error en sincronización', 'error');
+        }
+    } catch (err) {
+        if (resultDiv) {
+            resultDiv.style.background = '#fee2e2';
+            resultDiv.style.color = '#dc2626';
+            resultDiv.innerHTML = `❌ <strong>Error:</strong> ${err.message}`;
+        }
+        showToast('Error al sincronizar con Google Sheets', 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<span>📥</span> Sincronizar Catálogo con Google Sheets';
+        }
+    }
+}
+
+/**
+ * Sincronización rápida en 1 clic utilizando configuración guardada.
+ */
+async function quickSyncGoogleSheet() {
+    const btn = document.getElementById('btnQuickSyncSheets');
+    const resultDiv = document.getElementById('sheetsQuickSyncResult');
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span>⏳</span> Sincronizando...';
+    }
+
+    if (resultDiv) {
+        resultDiv.style.display = 'block';
+        resultDiv.style.background = 'rgba(59, 130, 246, 0.1)';
+        resultDiv.style.color = '#2563eb';
+        resultDiv.innerHTML = '🔄 Leyendo últimos cambios de la planilla de Google Sheets...';
+    }
+
+    try {
+        const res = await fetch('/api/sheets/quick-sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+            if (resultDiv) {
+                resultDiv.style.background = '#dcfce7';
+                resultDiv.style.color = '#16a34a';
+                resultDiv.innerHTML = `✅ <strong>Sincronizado al instante:</strong> ${data.inserted} agregados, ${data.updated} actualizados.`;
+            }
+
+            showToast(`⚡ Catálogo actualizado (${data.inserted + data.updated} cambios)`, 'success');
+            loadProducts();
+            loadGoogleSheetsConfig();
+        } else {
+            if (resultDiv) {
+                resultDiv.style.background = '#fee2e2';
+                resultDiv.style.color = '#dc2626';
+                resultDiv.innerHTML = `❌ ${data.error || 'Error en sincronización rápida'}`;
+            }
+            showToast(data.error || 'Error en sincronización rápida', 'error');
+        }
+    } catch (err) {
+        if (resultDiv) {
+            resultDiv.style.background = '#fee2e2';
+            resultDiv.style.color = '#dc2626';
+            resultDiv.innerHTML = `❌ ${err.message}`;
+        }
+        showToast('Error al conectar con Google Sheets', 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<span>⚡</span> Sincronizar Ahora (1 Clic)';
+        }
+    }
+}
+
+/**
+ * Modales de ayuda de Google Sheets.
+ */
+function showSheetsHelpModal() {
+    const modal = document.getElementById('sheetsHelpModal');
+    if (modal) modal.style.display = 'flex';
+}
+
+function closeSheetsHelpModal() {
+    const modal = document.getElementById('sheetsHelpModal');
+    if (modal) modal.style.display = 'none';
+}
+
 // ─── DOCTORES CRUD ────────────────────────────
 
 async function loadDoctors() {
@@ -3056,6 +3561,8 @@ function updateHostelModeUI() {
     const offBtn = document.getElementById('hostelModeOffBtn');
     const bookingsTab = document.getElementById('tab-bookings-btn');
     const roomsTab = document.getElementById('tab-rooms-btn');
+    const drawerBookings = document.getElementById('drawer-tab-bookings');
+    const drawerRooms = document.getElementById('drawer-tab-rooms');
 
     if (hostelModeEnabled) {
         if (badge) {
@@ -3068,6 +3575,8 @@ function updateHostelModeUI() {
         if (offBtn) offBtn.style.display = 'inline-flex';
         if (bookingsTab) bookingsTab.style.display = 'inline-flex';
         if (roomsTab) roomsTab.style.display = 'inline-flex';
+        if (drawerBookings) drawerBookings.style.display = 'flex';
+        if (drawerRooms) drawerRooms.style.display = 'flex';
     } else {
         if (badge) {
             badge.style.background = '#dcfce7';
@@ -3079,6 +3588,8 @@ function updateHostelModeUI() {
         if (offBtn) offBtn.style.display = 'none';
         if (bookingsTab) bookingsTab.style.display = 'none';
         if (roomsTab) roomsTab.style.display = 'none';
+        if (drawerBookings) drawerBookings.style.display = 'none';
+        if (drawerRooms) drawerRooms.style.display = 'none';
     }
 }
 

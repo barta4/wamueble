@@ -83,6 +83,10 @@ class Store {
         if (data.ai_api_key !== undefined) { fields.push('ai_api_key = ?'); values.push(data.ai_api_key); }
         if (data.whatsapp_provider !== undefined) { fields.push('whatsapp_provider = ?'); values.push(data.whatsapp_provider); }
         if (data.whatsapp_status !== undefined) { fields.push('whatsapp_status = ?'); values.push(data.whatsapp_status); }
+        if (data.google_sheet_url !== undefined) { fields.push('google_sheet_url = ?'); values.push(data.google_sheet_url); }
+        if (data.google_sheet_mapping !== undefined) { fields.push('google_sheet_mapping = ?'); values.push(typeof data.google_sheet_mapping === 'object' ? JSON.stringify(data.google_sheet_mapping) : data.google_sheet_mapping); }
+        if (data.google_sheet_sync_mode !== undefined) { fields.push('google_sheet_sync_mode = ?'); values.push(data.google_sheet_sync_mode); }
+        if (data.google_sheet_last_sync !== undefined) { fields.push('google_sheet_last_sync = ?'); values.push(data.google_sheet_last_sync); }
         
         if (fields.length === 0) return this.getById(id);
         

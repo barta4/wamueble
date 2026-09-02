@@ -83,6 +83,7 @@ const appointmentRoutes = require('./routes/appointments');
 const roomRoutes = require('./routes/rooms');
 const bookingRoutes = require('./routes/bookings');
 const excelRoutes = require('./routes/excel');
+const sheetsRoutes = require('./routes/sheets');
 const campaignRoutes = require('./routes/campaigns');
 const paymentRoutes = require('./routes/payments');
 
@@ -104,6 +105,7 @@ app.use('/api/appointments', appointmentRoutes);
 app.use('/api/rooms', roomRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/excel', excelRoutes);
+app.use('/api/sheets', sheetsRoutes);
 app.use('/api/campaigns', campaignRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/superadmin', superadminRoutes);

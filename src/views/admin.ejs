@@ -12,39 +12,134 @@
     <script src="/js/theme-toggle.js"></script>
 </head>
 <body class="admin-body">
-    <!-- Header -->
+    <!-- Header Admin Pro -->
     <header class="admin-header">
         <div class="header-left">
-            <img src="/images/logo.png" alt="Logo" class="logo-img-sm" onerror="this.style.display='none'">
-            <h1 class="store-name"><%= store ? store.name : 'WaBot' %> — Admin</h1>
+            <!-- Botón Hamburguesa Móvil -->
+            <button type="button" class="mobile-drawer-toggle" id="drawerOpenBtn" onclick="openAdminDrawer()" aria-label="Abrir Menú de Navegación">
+                <span class="burger-bar"></span>
+                <span class="burger-bar"></span>
+                <span class="burger-bar"></span>
+            </button>
+            
+            <div class="store-brand-badge">
+                <div class="store-avatar">
+                    <img src="/images/logo.png" alt="Logo" class="logo-img-sm" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                    <span class="avatar-fallback" style="display: none;"><%= (store && store.name ? store.name.charAt(0) : 'W').toUpperCase() %></span>
+                </div>
+                <div class="store-meta">
+                    <div class="store-title-row">
+                        <h1 class="store-name"><%= store ? store.name : 'WaBot' %></h1>
+                        <span class="status-live-dot" title="Sistema en Línea"></span>
+                    </div>
+                    <div class="store-pills">
+                        <span class="badge-role">Admin</span>
+                        <% if (store && store.clinic_mode === 1) { %>
+                            <span class="badge-mode clinic">🏥 Clínica</span>
+                        <% } else if (store && store.hostel_mode === 1) { %>
+                            <span class="badge-mode hostel">🏨 Hostel</span>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
         </div>
+        
         <div class="header-right">
             <% if (user && user.role === 'superadmin') { %>
-                <a href="/superadmin" class="nav-link active-saas">👑 Panel SaaS</a>
+                <a href="/superadmin" class="nav-link saas-badge-link" title="Panel SaaS Global">
+                    <span class="nav-icon">👑</span>
+                    <span class="nav-text">SaaS</span>
+                </a>
             <% } %>
-            <a href="/pedidos" class="nav-link">📺 Pedidos</a>
-            <button id="themeToggleBtn" class="nav-btn-icon" title="Cambiar Tema">🌙</button>
-            <a href="/logout" class="nav-link logout">Cerrar Sesión</a>
+            <a href="/pedidos" class="nav-link kitchen-link" title="Monitor de Pedidos">
+                <span class="nav-icon">📺</span>
+                <span class="nav-text">Pedidos</span>
+            </a>
+            <button type="button" id="themeToggleBtn" class="nav-btn-icon" title="Cambiar Tema (Claro / Oscuro)">🌙</button>
+            <a href="/logout" class="nav-link logout-btn" title="Cerrar Sesión">
+                <span class="nav-icon">🚪</span>
+                <span class="nav-text">Salir</span>
+            </a>
         </div>
     </header>
 
     <main class="admin-main">
-        <!-- Tabs de Navegación Directa y Responsiva -->
-        <div class="admin-tabs">
-            <button class="tab-btn active" data-tab="products" onclick="switchTab('products')">📦 Productos</button>
-            <button class="tab-btn" data-tab="services" onclick="switchTab('services')" id="tab-services-btn" style="<%= (store && store.clinic_mode === 1) ? '' : 'display: none;' %>">⚕️ Servicios</button>
-            <button class="tab-btn" data-tab="doctors" onclick="switchTab('doctors')" id="tab-doctors-btn" style="<%= (store && store.clinic_mode === 1) ? '' : 'display: none;' %>">👨‍⚕️ Doctores</button>
-            <button class="tab-btn" data-tab="appointments" onclick="switchTab('appointments')" id="tab-appointments-btn" style="<%= (store && store.clinic_mode === 1) ? '' : 'display: none;' %>">📅 Citas</button>
-            <button class="tab-btn" data-tab="rooms" onclick="switchTab('rooms')" id="tab-rooms-btn" style="<%= (store && store.hostel_mode === 1) ? '' : 'display: none;' %>">🛏️ Habitaciones</button>
-            <button class="tab-btn" data-tab="bookings" onclick="switchTab('bookings')" id="tab-bookings-btn" style="<%= (store && store.hostel_mode === 1) ? '' : 'display: none;' %>">🏨 Reservas</button>
-            <button class="tab-btn" data-tab="drivers" onclick="switchTab('drivers')">🛵 Repartidores</button>
-            <button class="tab-btn" data-tab="chats" onclick="switchTab('chats')">💬 Chats <span class="badge-red" id="chatsHandoffBadge" style="display: none;">!</span></button>
-            <button class="tab-btn" data-tab="history" onclick="switchTab('history')">📜 Historial</button>
-            <button class="tab-btn" data-tab="customers" onclick="switchTab('customers')">👥 Clientes</button>
-            <button class="tab-btn" data-tab="settings" onclick="switchTab('settings')">⚙️ Ajustes Bot</button>
-            <button class="tab-btn" data-tab="whatsapp" onclick="switchTab('whatsapp')">📱 Conexión WhatsApp</button>
-            <button class="tab-btn" data-tab="excel" onclick="switchTab('excel')">📊 Excel</button>
-            <button class="tab-btn" data-tab="database" onclick="switchTab('database')">🗄️ BD Externa</button>
+        <!-- Navegación de Pestañas con Scroll Horizontal Suave -->
+        <div class="admin-tabs-wrapper">
+            <div class="tabs-scroll-fade fade-left"></div>
+            <div class="admin-tabs" id="adminTabsBar">
+                <!-- Gestión & Catálogo -->
+                <button class="tab-btn active" data-tab="products" onclick="switchTab('products')">
+                    <span class="tab-icon">📦</span>
+                    <span class="tab-label">Productos</span>
+                </button>
+                <button class="tab-btn" data-tab="services" onclick="switchTab('services')" id="tab-services-btn" style="<%= (store && store.clinic_mode === 1) ? '' : 'display: none;' %>">
+                    <span class="tab-icon">⚕️</span>
+                    <span class="tab-label">Servicios</span>
+                </button>
+                <button class="tab-btn" data-tab="doctors" onclick="switchTab('doctors')" id="tab-doctors-btn" style="<%= (store && store.clinic_mode === 1) ? '' : 'display: none;' %>">
+                    <span class="tab-icon">👨‍⚕️</span>
+                    <span class="tab-label">Doctores</span>
+                </button>
+                <button class="tab-btn" data-tab="appointments" onclick="switchTab('appointments')" id="tab-appointments-btn" style="<%= (store && store.clinic_mode === 1) ? '' : 'display: none;' %>">
+                    <span class="tab-icon">📅</span>
+                    <span class="tab-label">Citas</span>
+                </button>
+                <button class="tab-btn" data-tab="rooms" onclick="switchTab('rooms')" id="tab-rooms-btn" style="<%= (store && store.hostel_mode === 1) ? '' : 'display: none;' %>">
+                    <span class="tab-icon">🛏️</span>
+                    <span class="tab-label">Habitaciones</span>
+                </button>
+                <button class="tab-btn" data-tab="bookings" onclick="switchTab('bookings')" id="tab-bookings-btn" style="<%= (store && store.hostel_mode === 1) ? '' : 'display: none;' %>">
+                    <span class="tab-icon">🏨</span>
+                    <span class="tab-label">Reservas</span>
+                </button>
+                <button class="tab-btn" data-tab="drivers" onclick="switchTab('drivers')">
+                    <span class="tab-icon">🛵</span>
+                    <span class="tab-label">Repartidores</span>
+                </button>
+
+                <div class="tabs-separator"></div>
+
+                <!-- Atención & Clientes -->
+                <button class="tab-btn" data-tab="chats" onclick="switchTab('chats')">
+                    <span class="tab-icon">💬</span>
+                    <span class="tab-label">Chats</span>
+                    <span class="badge-red" id="chatsHandoffBadge" style="display: none;">!</span>
+                </button>
+                <button class="tab-btn" data-tab="customers" onclick="switchTab('customers')">
+                    <span class="tab-icon">👥</span>
+                    <span class="tab-label">Clientes</span>
+                </button>
+                <button class="tab-btn" data-tab="history" onclick="switchTab('history')">
+                    <span class="tab-icon">📜</span>
+                    <span class="tab-label">Historial</span>
+                </button>
+
+                <div class="tabs-separator"></div>
+
+                <!-- Configuración & Conexiones -->
+                <button class="tab-btn" data-tab="settings" onclick="switchTab('settings')">
+                    <span class="tab-icon">⚙️</span>
+                    <span class="tab-label">Ajustes</span>
+                </button>
+                <button class="tab-btn" data-tab="whatsapp" onclick="switchTab('whatsapp')">
+                    <span class="tab-icon">📱</span>
+                    <span class="tab-label">WhatsApp</span>
+                </button>
+                <button class="tab-btn" data-tab="excel" onclick="switchTab('excel')">
+                    <span class="tab-icon">📊</span>
+                    <span class="tab-label">Excel</span>
+                </button>
+                <button class="tab-btn" data-tab="sheets" onclick="switchTab('sheets')">
+                    <span class="tab-icon">📑</span>
+                    <span class="tab-label">Google Sheets</span>
+                </button>
+                <button class="tab-btn" data-tab="database" onclick="switchTab('database')">
+                    <span class="tab-icon">🗄️</span>
+                    <span class="tab-label">BD Externa</span>
+                </button>
+            </div>
+            <div class="tabs-scroll-fade fade-right"></div>
         </div>
 
         <!-- Tab: Productos -->
@@ -685,6 +780,161 @@
             </div>
         </section>
 
+        <!-- Tab: Google Sheets -->
+        <section class="tab-content" id="tab-sheets">
+            <!-- Barra de Estado y Sincronización Rápida (Visible si ya está configurado) -->
+            <div class="form-card" id="sheetsQuickSyncCard" style="display: none; margin-bottom: 24px; border: 1.5px solid rgba(0, 168, 132, 0.3); background: linear-gradient(135deg, var(--bg-card), rgba(0, 168, 132, 0.05));">
+                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                            <span style="font-size: 1.3rem;">🔄</span>
+                            <h3 style="margin: 0;">Sincronización Rápida de Catálogo</h3>
+                            <span class="badge-role" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border-color: rgba(16, 185, 129, 0.3);">Vinculado</span>
+                        </div>
+                        <p style="margin: 0; font-size: 0.88rem; color: var(--text-secondary);">
+                            Planilla activa: <a href="#" id="sheetsCurrentUrlLink" target="_blank" style="color: var(--accent-primary); font-weight: 600; text-decoration: underline;">Abrir en Google Sheets ↗</a>
+                        </p>
+                        <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 4px;" id="sheetsLastSyncText">
+                            Última sincronización: Pendiente
+                        </div>
+                    </div>
+                    <div>
+                        <button type="button" class="btn-primary" id="btnQuickSyncSheets" onclick="quickSyncGoogleSheet()" style="display: flex; align-items: center; gap: 8px; padding: 10px 18px;">
+                            <span>⚡</span> Sincronizar Ahora (1 Clic)
+                        </button>
+                    </div>
+                </div>
+                <div id="sheetsQuickSyncResult" style="display: none; margin-top: 14px; padding: 10px 14px; border-radius: 8px; font-size: 0.88rem;"></div>
+            </div>
+
+            <!-- Formulario de Conexión y Configuración -->
+            <div class="form-card">
+                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
+                    <div>
+                        <h3 style="margin: 0 0 4px 0; display: flex; align-items: center; gap: 8px;">
+                            <span>📑</span> Conectar Catálogo con Google Sheets
+                        </h3>
+                        <p style="margin: 0; font-size: 0.88rem; color: var(--text-secondary);">
+                            Sincronizá tus productos, precios, categorías y descripciones automáticamente desde una planilla de Google Drive.
+                        </p>
+                    </div>
+                    <div>
+                        <button type="button" class="btn-secondary" onclick="showSheetsHelpModal()" style="font-size: 0.84rem; padding: 7px 12px;">
+                            ℹ️ ¿Cómo compartir la planilla?
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Alerta de Ayuda Rápida -->
+                <div style="padding: 12px 16px; border-radius: 8px; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2); margin-bottom: 20px; font-size: 0.86rem; line-height: 1.4; color: var(--text-primary);">
+                    💡 <strong>Paso rápido:</strong> En tu planilla de Google Sheets, hacé clic en el botón verde <strong>Compartir</strong> (arriba a la derecha), cambiá el acceso general a <strong>"Cualquier persona con el enlace"</strong> en rol <strong>Lector</strong>, y pegá el enlace aquí debajo.
+                </div>
+
+                <form id="sheetsConnectForm" onsubmit="previewGoogleSheet(event)">
+                    <div class="form-group">
+                        <label for="googleSheetUrl" style="font-weight: 600; font-size: 0.9rem;">Enlace de la planilla de Google Sheets *</label>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <input type="url" id="googleSheetUrl" placeholder="https://docs.google.com/spreadsheets/d/1BxiMVs.../edit?gid=0" required class="form-control" style="flex: 1; min-width: 280px;">
+                            <button type="submit" class="btn-primary" id="btnPreviewSheets" style="padding: 10px 20px; white-space: nowrap; display: flex; align-items: center; gap: 6px;">
+                                <span>🔍</span> Conectar y Previsualizar
+                            </button>
+                        </div>
+                    </div>
+                </form>
+
+                <!-- Feedback de Carga / Error -->
+                <div id="sheetsPreviewStatus" style="display: none; margin-top: 16px; padding: 12px; border-radius: 8px;"></div>
+
+                <!-- Sección de Mapeo y Vista Previa (Aparece tras conectar con éxito) -->
+                <div id="sheetsMappingSection" style="display: none; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border-color);">
+                    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 14px;">
+                        <div>
+                            <h4 style="margin: 0; font-size: 1.05rem;">Mapeo de Columnas</h4>
+                            <p style="margin: 4px 0 0; font-size: 0.85rem; color: var(--text-secondary);">
+                                Verificá o seleccioná la columna de tu planilla que corresponde a cada campo.
+                            </p>
+                        </div>
+                        <div>
+                            <span class="badge-role" id="sheetsTotalRowsBadge" style="font-size: 0.8rem; padding: 4px 10px;">0 filas detectadas</span>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="sheetsMapName" style="font-weight: 600;">Nombre del Producto *</label>
+                            <select id="sheetsMapName" class="form-control" required></select>
+                        </div>
+                        <div class="form-group">
+                            <label for="sheetsMapPrice" style="font-weight: 600;">Precio ($) *</label>
+                            <select id="sheetsMapPrice" class="form-control" required></select>
+                        </div>
+                        <div class="form-group">
+                            <label for="sheetsMapCategory">Categoría</label>
+                            <select id="sheetsMapCategory" class="form-control"></select>
+                        </div>
+                        <div class="form-group">
+                            <label for="sheetsMapDescription">Descripción</label>
+                            <select id="sheetsMapDescription" class="form-control"></select>
+                        </div>
+                        <div class="form-group">
+                            <label for="sheetsMapIsService">Es Servicio (Sí / No)</label>
+                            <select id="sheetsMapIsService" class="form-control"></select>
+                        </div>
+                        <div class="form-group">
+                            <label for="sheetsMapDuration">Duración en minutos (Clínica)</label>
+                            <select id="sheetsMapDuration" class="form-control"></select>
+                        </div>
+                        <div class="form-group">
+                            <label for="sheetsMapAvailable">Disponibilidad / Stock</label>
+                            <select id="sheetsMapAvailable" class="form-control"></select>
+                        </div>
+                        <div class="form-group">
+                            <label for="sheetsMapImage">URL de Imagen (Opcional)</label>
+                            <select id="sheetsMapImage" class="form-control"></select>
+                        </div>
+                    </div>
+
+                    <!-- Modo de Sincronización -->
+                    <div style="margin-top: 18px; padding: 14px; border-radius: 8px; background: var(--bg-input); border: 1px solid var(--border-color);">
+                        <label style="font-weight: 600; font-size: 0.9rem; display: block; margin-bottom: 8px;">Modo de Actualización de Catálogo</label>
+                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                            <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 0.88rem;">
+                                <input type="radio" name="sheetsSyncMode" value="upsert" checked style="margin-top: 3px;">
+                                <div>
+                                    <strong>Actualizar existentes y agregar nuevos (Recomendado)</strong>
+                                    <div style="color: var(--text-secondary); font-size: 0.8rem;">Modifica el precio, descripción y disponibilidad de los productos que ya coincidan por nombre, y crea los que no existan.</div>
+                                </div>
+                            </label>
+                            <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 0.88rem;">
+                                <input type="radio" name="sheetsSyncMode" value="replace" style="margin-top: 3px;">
+                                <div>
+                                    <strong style="color: var(--accent-red);">Reemplazar catálogo completo</strong>
+                                    <div style="color: var(--text-secondary); font-size: 0.8rem;">Elimina los productos actuales de la tienda y carga únicamente los que estén presentes en la planilla.</div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Vista Previa de Filas -->
+                    <div style="margin-top: 20px;">
+                        <h4 style="margin: 0 0 10px 0; font-size: 0.95rem;">Muestra de Datos (Primeras 10 filas)</h4>
+                        <div style="overflow-x: auto; border: 1px solid var(--border-color); border-radius: 8px; max-height: 280px; overflow-y: auto;">
+                            <table id="sheetsPreviewTable" style="width: 100%; border-collapse: collapse; font-size: 0.84rem;">
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="form-actions" style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px;">
+                        <button type="button" class="btn-primary" onclick="importGoogleSheetProducts()" id="btnImportSheets" style="padding: 11px 22px; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
+                            <span>📥</span> Sincronizar Catálogo con Google Sheets
+                        </button>
+                    </div>
+
+                    <div id="sheetsImportResult" style="display: none; margin-top: 16px; padding: 14px; border-radius: 8px;"></div>
+                </div>
+            </div>
+        </section>
+
         <!-- Tab: Ajustes -->
         <section class="tab-content" id="tab-settings">
             <!-- Modo Clínica Toggle -->
@@ -1087,6 +1337,198 @@
             </div>
         </div>
     </div>
+
+    <!-- Modal: Ayuda para compartir Google Sheet -->
+    <div id="sheetsHelpModal" class="chat-modal-overlay" style="display: none;">
+        <div class="chat-modal-content" style="max-width: 560px; width: 92%; text-align: left;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+                <h3 style="margin: 0; color: var(--text-primary); font-size: 1.2rem; display: flex; align-items: center; gap: 8px;">
+                    <span>📖</span> Cómo compartir tu Google Sheet
+                </h3>
+                <button type="button" onclick="closeSheetsHelpModal()" style="background: transparent; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-primary);">✕</button>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 14px; font-size: 0.9rem; line-height: 1.5; color: var(--text-primary);">
+                <div style="display: flex; gap: 12px;">
+                    <div style="width: 28px; height: 28px; border-radius: 50%; background: var(--accent-primary); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0;">1</div>
+                    <div>
+                        <strong>Abrí tu planilla en Google Sheets:</strong><br>
+                        En la esquina superior derecha, hacé clic en el botón verde <strong>"Compartir"</strong>.
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 12px;">
+                    <div style="width: 28px; height: 28px; border-radius: 50%; background: var(--accent-primary); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0;">2</div>
+                    <div>
+                        <strong>Cambiá el acceso general:</strong><br>
+                        En la sección <em>Acceso general</em>, cambiá de "Restringido" a <strong>"Cualquier persona con el enlace"</strong>.
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 12px;">
+                    <div style="width: 28px; height: 28px; border-radius: 50%; background: var(--accent-primary); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0;">3</div>
+                    <div>
+                        <strong>Verificá el rol de Lector:</strong><br>
+                        Asegurate de que el rol a la derecha esté configurado como <strong>"Lector"</strong> (no es necesario dar permisos de editor).
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 12px;">
+                    <div style="width: 28px; height: 28px; border-radius: 50%; background: var(--accent-primary); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0;">4</div>
+                    <div>
+                        <strong>Copiá el enlace y pegalo:</strong><br>
+                        Hacé clic en <strong>"Copiar enlace"</strong> y pegalo en el campo de texto en este panel.
+                    </div>
+                </div>
+
+                <div style="padding: 10px 14px; border-radius: 8px; background: var(--bg-input); border: 1px solid var(--border-color); font-size: 0.85rem;">
+                    💡 <strong>Columnas recomendadas:</strong> Nombre, Precio, Categoría, Descripción, Disponible (Sí/No).
+                </div>
+            </div>
+
+            <div style="margin-top: 20px; display: flex; justify-content: flex-end; border-top: 1px solid var(--border-color); padding-top: 12px;">
+                <button type="button" class="btn-primary" onclick="closeSheetsHelpModal()">Entendido</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Drawer Navigation Overlay & Panel -->
+    <div class="admin-drawer-overlay" id="adminDrawerOverlay" onclick="closeAdminDrawer()"></div>
+    <aside class="admin-drawer" id="adminDrawer" aria-label="Menú Lateral Completo">
+        <div class="drawer-header">
+            <div class="drawer-brand">
+                <div class="drawer-logo-icon">🏪</div>
+                <div class="drawer-brand-text">
+                    <span class="drawer-store-title"><%= store ? store.name : 'WaBot' %></span>
+                    <span class="drawer-store-sub">Panel de Administración</span>
+                </div>
+            </div>
+            <button type="button" class="drawer-close-btn" onclick="closeAdminDrawer()" aria-label="Cerrar menú">✕</button>
+        </div>
+
+        <div class="drawer-body">
+            <!-- Grupo: Operaciones y Catálogo -->
+            <div class="drawer-group">
+                <span class="drawer-group-title">GESTIÓN Y CATÁLOGO</span>
+                <button type="button" class="drawer-item active" data-tab="products" onclick="switchTabAndCloseDrawer('products')">
+                    <span class="drawer-item-icon">📦</span>
+                    <span class="drawer-item-text">Productos</span>
+                </button>
+                <button type="button" class="drawer-item drawer-clinic-item" data-tab="services" onclick="switchTabAndCloseDrawer('services')" id="drawer-tab-services" style="<%= (store && store.clinic_mode === 1) ? '' : 'display: none;' %>">
+                    <span class="drawer-item-icon">⚕️</span>
+                    <span class="drawer-item-text">Servicios</span>
+                </button>
+                <button type="button" class="drawer-item drawer-clinic-item" data-tab="doctors" onclick="switchTabAndCloseDrawer('doctors')" id="drawer-tab-doctors" style="<%= (store && store.clinic_mode === 1) ? '' : 'display: none;' %>">
+                    <span class="drawer-item-icon">👨‍⚕️</span>
+                    <span class="drawer-item-text">Doctores</span>
+                </button>
+                <button type="button" class="drawer-item drawer-clinic-item" data-tab="appointments" onclick="switchTabAndCloseDrawer('appointments')" id="drawer-tab-appointments" style="<%= (store && store.clinic_mode === 1) ? '' : 'display: none;' %>">
+                    <span class="drawer-item-icon">📅</span>
+                    <span class="drawer-item-text">Citas</span>
+                </button>
+                <button type="button" class="drawer-item drawer-hostel-item" data-tab="rooms" onclick="switchTabAndCloseDrawer('rooms')" id="drawer-tab-rooms" style="<%= (store && store.hostel_mode === 1) ? '' : 'display: none;' %>">
+                    <span class="drawer-item-icon">🛏️</span>
+                    <span class="drawer-item-text">Habitaciones</span>
+                </button>
+                <button type="button" class="drawer-item drawer-hostel-item" data-tab="bookings" onclick="switchTabAndCloseDrawer('bookings')" id="drawer-tab-bookings" style="<%= (store && store.hostel_mode === 1) ? '' : 'display: none;' %>">
+                    <span class="drawer-item-icon">🏨</span>
+                    <span class="drawer-item-text">Reservas</span>
+                </button>
+                <button type="button" class="drawer-item" data-tab="drivers" onclick="switchTabAndCloseDrawer('drivers')">
+                    <span class="drawer-item-icon">🛵</span>
+                    <span class="drawer-item-text">Repartidores</span>
+                </button>
+            </div>
+
+            <!-- Grupo: Comunicaciones y CRM -->
+            <div class="drawer-group">
+                <span class="drawer-group-title">COMUNICACIÓN & CLIENTES</span>
+                <button type="button" class="drawer-item" data-tab="chats" onclick="switchTabAndCloseDrawer('chats')">
+                    <span class="drawer-item-icon">💬</span>
+                    <span class="drawer-item-text">Chats en Vivo</span>
+                    <span class="badge-red drawer-badge" id="chatsHandoffBadgeDrawer" style="display: none;">!</span>
+                </button>
+                <button type="button" class="drawer-item" data-tab="customers" onclick="switchTabAndCloseDrawer('customers')">
+                    <span class="drawer-item-icon">👥</span>
+                    <span class="drawer-item-text">Clientes</span>
+                </button>
+                <button type="button" class="drawer-item" data-tab="history" onclick="switchTabAndCloseDrawer('history')">
+                    <span class="drawer-item-icon">📜</span>
+                    <span class="drawer-item-text">Historial de Pedidos</span>
+                </button>
+            </div>
+
+            <!-- Grupo: Configuración y Conexiones -->
+            <div class="drawer-group">
+                <span class="drawer-group-title">SISTEMA & CONFIGURACIÓN</span>
+                <button type="button" class="drawer-item" data-tab="settings" onclick="switchTabAndCloseDrawer('settings')">
+                    <span class="drawer-item-icon">⚙️</span>
+                    <span class="drawer-item-text">Ajustes del Bot</span>
+                </button>
+                <button type="button" class="drawer-item" data-tab="whatsapp" onclick="switchTabAndCloseDrawer('whatsapp')">
+                    <span class="drawer-item-icon">📱</span>
+                    <span class="drawer-item-text">Conexión WhatsApp</span>
+                </button>
+                <button type="button" class="drawer-item" data-tab="excel" onclick="switchTabAndCloseDrawer('excel')">
+                    <span class="drawer-item-icon">📊</span>
+                    <span class="drawer-item-text">Excel (Import / Export)</span>
+                </button>
+                <button type="button" class="drawer-item" data-tab="sheets" onclick="switchTabAndCloseDrawer('sheets')">
+                    <span class="drawer-item-icon">📑</span>
+                    <span class="drawer-item-text">Google Sheets</span>
+                </button>
+                <button type="button" class="drawer-item" data-tab="database" onclick="switchTabAndCloseDrawer('database')">
+                    <span class="drawer-item-icon">🗄️</span>
+                    <span class="drawer-item-text">Base de Datos Externa</span>
+                </button>
+            </div>
+
+            <!-- Accesos Globales -->
+            <div class="drawer-group drawer-links">
+                <span class="drawer-group-title">ACCESOS RÁPIDOS</span>
+                <a href="/pedidos" class="drawer-link">
+                    <span>📺</span>
+                    <span>Monitor de Pedidos TV</span>
+                </a>
+                <% if (user && user.role === 'superadmin') { %>
+                    <a href="/superadmin" class="drawer-link saas-link">
+                        <span>👑</span>
+                        <span>Panel SaaS SuperAdmin</span>
+                    </a>
+                <% } %>
+            </div>
+        </div>
+
+        <div class="drawer-footer">
+            <button type="button" class="drawer-footer-btn" onclick="toggleThemeGlobal()">
+                <span id="drawerThemeIcon">🌙</span> Cambiar Tema
+            </button>
+            <a href="/logout" class="drawer-footer-btn logout">
+                <span>🚪</span> Cerrar Sesión
+            </a>
+        </div>
+    </aside>
+
+    <!-- Mobile Bottom Navigation Bar (Acceso Rápido Ergonómico) -->
+    <nav class="admin-bottom-nav" id="adminBottomNav" aria-label="Navegación Móvil Inferior">
+        <button type="button" class="b-nav-item active" data-tab="products" onclick="switchTab('products')">
+            <span class="b-nav-icon">📦</span>
+            <span class="b-nav-label">Catálogo</span>
+        </button>
+        <button type="button" class="b-nav-item" data-tab="chats" onclick="switchTab('chats')">
+            <span class="b-nav-icon">💬</span>
+            <span class="b-nav-label">Chats</span>
+            <span class="badge-red b-nav-badge" id="chatsHandoffBadgeBottom" style="display: none;">!</span>
+        </button>
+        <button type="button" class="b-nav-item" data-tab="customers" onclick="switchTab('customers')">
+            <span class="b-nav-icon">👥</span>
+            <span class="b-nav-label">Clientes</span>
+        </button>
+        <button type="button" class="b-nav-item" onclick="openAdminDrawer()">
+            <span class="b-nav-icon">☰</span>
+            <span class="b-nav-label">Menú</span>
+        </button>
+    </nav>
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
