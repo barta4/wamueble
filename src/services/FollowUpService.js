@@ -182,8 +182,9 @@ class FollowUpService {
         // 1. Encuesta de Satisfacción Post-Entrega
         const deliveredOrders = db.prepare(`
             SELECT * FROM orders 
-            WHERE store_id = ? AND status = 'delivered' AND DATE(updated_at, 'localtime') = ?
-        `).all(store.id, today);
+            WHERE store_id = ? AND status = 'delivered' 
+              AND (DATE(updated_at) = DATE('now') OR DATE(updated_at, 'localtime') = DATE('now', 'localtime'))
+        `).all(store.id);
 
         for (const order of deliveredOrders) {
             const alreadySent = await this.isLogSent(store.id, 'order_feedback', order.id);

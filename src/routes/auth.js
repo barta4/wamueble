@@ -1,8 +1,38 @@
 const express = require('express');
 const router = express.Router();
+const rateLimit = require('express-rate-limit');
 const User = require('../models/User');
 const Store = require('../models/Store');
 const BUSINESS_TEMPLATES = require('../config/businessTemplates');
+
+// Limitador de tasa contra ataques de fuerza bruta en login (10 intentos por 15 min)
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 15,
+    standardHeaders: true,
+    legacyHeaders: false,
+    handler: (req, res) => {
+        res.status(429).render('login', {
+            title: 'Iniciar Sesión — WaBot SaaS',
+            error: 'Demasiados intentos de acceso fallidos desde esta IP. Por favor, intentá nuevamente en 15 minutos.'
+        });
+    }
+});
+
+// Limitador de tasa para registro de cuentas (10 registros por IP por hora)
+const registerLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    handler: (req, res) => {
+        res.status(429).render('register', {
+            title: 'Crear Cuenta — WaBot SaaS',
+            templates: BUSINESS_TEMPLATES,
+            error: 'Demasiadas solicitudes de registro desde esta IP. Por favor, intentá más tarde.'
+        });
+    }
+});
 
 /**
  * GET /register
@@ -23,7 +53,7 @@ router.get('/register', (req, res) => {
  * POST /register
  * Procesar registro de nuevo usuario.
  */
-router.post('/register', async (req, res) => {
+router.post('/register', registerLimiter, async (req, res) => {
     try {
         const { name, email, password, confirmPassword, businessType, operatingMode, storeName, phone, address } = req.body;
 
@@ -145,7 +175,7 @@ router.get('/login', (req, res) => {
  * POST /login
  * Procesar login.
  */
-router.post('/login', async (req, res) => {
+router.post('/login', loginLimiter, async (req, res) => {
     try {
         const { email, password } = req.body;
 
@@ -181,11 +211,7 @@ router.post('/login', async (req, res) => {
     }
 });
 
-/**
- * GET /logout
- * Cerrar sesión.
- */
-router.get('/logout', (req, res) => {
+function handleLogout(req, res) {
     if (req.session && typeof req.session.destroy === 'function') {
         req.session.destroy((err) => {
             if (err) console.error("Error al destruir sesión:", err);
@@ -194,6 +220,13 @@ router.get('/logout', (req, res) => {
     } else {
         res.redirect('/');
     }
-});
+}
+
+/**
+ * GET /logout y POST /logout
+ * Cerrar sesión de forma segura.
+ */
+router.get('/logout', handleLogout);
+router.post('/logout', handleLogout);
 
 module.exports = router;

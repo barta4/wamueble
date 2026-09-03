@@ -79,20 +79,20 @@ router.get('/onboarding', requireAuth, (req, res) => {
  * GET /pedidos
  * Dashboard de pedidos (modo kiosk para tablet).
  */
-router.get('/pedidos', (req, res) => {
-    // Obtener storeId de la sesión o del parámetro query ?store=ID
-    let storeId = req.session ? req.session.storeId : null;
-    if (!storeId && req.query.store) {
+router.get('/pedidos', requireAuth, (req, res) => {
+    // Obtener storeId del usuario autenticado; solo superadmin puede alternar ?store=ID
+    let storeId = req.user.store_id;
+    if (req.user.role === 'superadmin' && req.query.store) {
         storeId = parseInt(req.query.store, 10);
     }
 
     if (!storeId) {
-        return res.redirect('/login');
+        return res.redirect('/dashboard');
     }
 
     const store = Store.getById(storeId);
     if (!store) {
-        return res.redirect('/login');
+        return res.redirect('/dashboard');
     }
 
     const pendingOrders = Order.getPending(storeId);

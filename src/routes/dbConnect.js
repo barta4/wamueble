@@ -7,9 +7,32 @@ const express = require('express');
 const router = express.Router();
 const { getDb } = require('../config/db');
 const { requireAuth } = require('../middleware/auth');
+const path = require('path');
 
 function validateIdentifier(name) {
     return name && /^[a-zA-Z0-9_]+$/.test(name);
+}
+
+function isPrivateOrLocalHost(host) {
+    if (!host) return false;
+    const h = String(host).toLowerCase().trim();
+    return h === 'localhost' || h === '127.0.0.1' || h === '::1' ||
+           h.startsWith('127.') || h.startsWith('10.') || h.startsWith('192.168.') ||
+           /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(h) ||
+           h === '169.254.169.254' || h.endsWith('.local') || h.endsWith('.internal');
+}
+
+function getSafeSqlitePath(database) {
+    const uploadDir = path.resolve(__dirname, '..', '..', 'data', 'uploads');
+    const safeName = path.basename(database || '');
+    if (!safeName || (!safeName.endsWith('.sqlite') && !safeName.endsWith('.db'))) {
+        throw new Error('Por seguridad, solo se permite conectar a archivos SQLite (.sqlite o .db) ubicados en data/uploads.');
+    }
+    const fullPath = path.resolve(uploadDir, safeName);
+    if (!fullPath.startsWith(uploadDir)) {
+        throw new Error('Ruta de archivo no permitida.');
+    }
+    return fullPath;
 }
 
 /**
@@ -22,6 +45,12 @@ router.post('/test', requireAuth, async (req, res) => {
 
         if (!dbType || !database) {
             return res.status(400).json({ error: 'Tipo de BD y nombre son requeridos' });
+        }
+
+        if (req.user.role !== 'superadmin' && (dbType === 'mysql' || dbType === 'postgresql')) {
+            if (isPrivateOrLocalHost(host)) {
+                return res.status(400).json({ error: 'Conexión denegada: no se permite conectar a hosts locales o redes privadas.' });
+            }
         }
 
         let connection;
@@ -60,8 +89,8 @@ router.post('/test', requireAuth, async (req, res) => {
 
             case 'sqlite':
                 const Database = require('better-sqlite3');
-                // Para SQLite, el "host" es el path del archivo
-                const sqliteDb = new Database(database);
+                const safePath = getSafeSqlitePath(database);
+                const sqliteDb = new Database(safePath, { readonly: true, fileMustExist: true });
                 const sqliteResult = sqliteDb.prepare('SELECT 1 as test').get();
                 testResult = sqliteResult.test === 1;
                 sqliteDb.close();
@@ -90,6 +119,12 @@ router.post('/test', requireAuth, async (req, res) => {
 router.get('/tables', requireAuth, async (req, res) => {
     try {
         const { dbType, host, port, database, username, password } = req.query;
+
+        if (req.user.role !== 'superadmin' && (dbType === 'mysql' || dbType === 'postgresql')) {
+            if (isPrivateOrLocalHost(host)) {
+                return res.status(400).json({ error: 'Conexión denegada: no se permite conectar a hosts locales o redes privadas.' });
+            }
+        }
 
         let tables = [];
 
@@ -128,7 +163,8 @@ router.get('/tables', requireAuth, async (req, res) => {
 
             case 'sqlite':
                 const Database = require('better-sqlite3');
-                const sqliteDb = new Database(database);
+                const safePath = getSafeSqlitePath(database);
+                const sqliteDb = new Database(safePath, { readonly: true, fileMustExist: true });
                 const sqliteTables = sqliteDb.prepare(`
                     SELECT name FROM sqlite_master 
                     WHERE type='table' AND name NOT LIKE 'sqlite_%'
@@ -161,6 +197,12 @@ router.get('/schema/:table', requireAuth, async (req, res) => {
             return res.status(400).json({ error: "Nombre de tabla inválido. Solo se permiten caracteres alfanuméricos y guiones bajos." });
         }
         const { dbType, host, port, database, username, password } = req.query;
+
+        if (req.user.role !== 'superadmin' && (dbType === 'mysql' || dbType === 'postgresql')) {
+            if (isPrivateOrLocalHost(host)) {
+                return res.status(400).json({ error: 'Conexión denegada: no se permite conectar a hosts locales o redes privadas.' });
+            }
+        }
 
         let columns = [];
 
@@ -208,7 +250,8 @@ router.get('/schema/:table', requireAuth, async (req, res) => {
 
             case 'sqlite':
                 const Database = require('better-sqlite3');
-                const sqliteDb = new Database(database);
+                const safePath = getSafeSqlitePath(database);
+                const sqliteDb = new Database(safePath, { readonly: true, fileMustExist: true });
                 const sqliteCols = sqliteDb.prepare(`PRAGMA table_info(?)`).all(table);
                 columns = sqliteCols.map(c => ({
                     name: c.name,
@@ -239,6 +282,12 @@ router.post('/preview', requireAuth, async (req, res) => {
         const { dbType, host, port, database, username, password, table, limit = 10 } = req.body;
         if (!validateIdentifier(table)) {
             return res.status(400).json({ error: "Nombre de tabla inválido." });
+        }
+
+        if (req.user.role !== 'superadmin' && (dbType === 'mysql' || dbType === 'postgresql')) {
+            if (isPrivateOrLocalHost(host)) {
+                return res.status(400).json({ error: 'Conexión denegada: no se permite conectar a hosts locales o redes privadas.' });
+            }
         }
 
         let rows = [];
@@ -274,7 +323,8 @@ router.post('/preview', requireAuth, async (req, res) => {
 
             case 'sqlite':
                 const Database = require('better-sqlite3');
-                const sqliteDb = new Database(database);
+                const safePath = getSafeSqlitePath(database);
+                const sqliteDb = new Database(safePath, { readonly: true, fileMustExist: true });
                 rows = sqliteDb.prepare(`SELECT * FROM "${table}" LIMIT ?`).all(limit);
                 sqliteDb.close();
                 break;
@@ -320,6 +370,12 @@ router.post('/import', requireAuth, async (req, res) => {
             return res.status(400).json({ error: 'Mapeo de nombre y precio son requeridos' });
         }
 
+        if (req.user.role !== 'superadmin' && (dbType === 'mysql' || dbType === 'postgresql')) {
+            if (isPrivateOrLocalHost(host)) {
+                return res.status(400).json({ error: 'Conexión denegada: no se permite conectar a hosts locales o redes privadas.' });
+            }
+        }
+
         let rows = [];
 
         switch (dbType) {
@@ -359,7 +415,8 @@ router.post('/import', requireAuth, async (req, res) => {
 
             case 'sqlite':
                 const Database = require('better-sqlite3');
-                const sqliteDb = new Database(database);
+                const safePath = getSafeSqlitePath(database);
+                const sqliteDb = new Database(safePath, { readonly: true, fileMustExist: true });
                 let sqliteSelectCols = `"${nameCol}", "${priceCol}"`;
                 if (descCol) sqliteSelectCols += `, "${descCol}"`;
                 if (catCol) sqliteSelectCols += `, "${catCol}"`;

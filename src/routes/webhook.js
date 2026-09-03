@@ -26,14 +26,17 @@ function verifySignature(req, res, next) {
     }
 
     const parts = signature.split('=');
-    const signatureHash = parts[1];
+    const signatureHash = parts[1] || '';
 
     const expectedHash = crypto
         .createHmac('sha256', appSecret)
         .update(req.rawBody || '')
         .digest('hex');
 
-    if (signatureHash !== expectedHash) {
+    const signatureBuffer = Buffer.from(signatureHash, 'utf-8');
+    const expectedBuffer = Buffer.from(expectedHash, 'utf-8');
+
+    if (signatureBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(signatureBuffer, expectedBuffer)) {
         console.error('❌ Firma de webhook inválida');
         return res.status(401).send('Invalid signature');
     }

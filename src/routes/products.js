@@ -12,12 +12,16 @@ if (!fs.existsSync(mediaDir)) {
     fs.mkdirSync(mediaDir, { recursive: true });
 }
 
+const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
+const ALLOWED_MIMES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         cb(null, mediaDir);
     },
     filename: (req, file, cb) => {
-        const ext = path.extname(file.originalname) || '.jpg';
+        const rawExt = path.extname(file.originalname).toLowerCase();
+        const ext = ALLOWED_EXTENSIONS.includes(rawExt) ? rawExt : '.jpg';
         const uniqueName = `product_${Date.now()}_${Math.round(Math.random() * 1E9)}${ext}`;
         cb(null, uniqueName);
     }
@@ -27,10 +31,11 @@ const upload = multer({
     storage,
     limits: { fileSize: 10 * 1024 * 1024 }, // Max 10MB
     fileFilter: (req, file, cb) => {
-        if (file.mimetype.startsWith('image/')) {
+        const rawExt = path.extname(file.originalname).toLowerCase();
+        if (ALLOWED_MIMES.includes(file.mimetype) && ALLOWED_EXTENSIONS.includes(rawExt)) {
             cb(null, true);
         } else {
-            cb(new Error('Solo se permiten archivos de imagen'));
+            cb(new Error('Solo se permiten imágenes válidas (.jpg, .jpeg, .png, .webp, .gif).'));
         }
     }
 });

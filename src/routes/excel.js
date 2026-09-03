@@ -106,14 +106,15 @@ router.post('/import', requireAuth, (req, res) => {
             });
         }
 
-        // Buscar el archivo
-        const uploadDir = path.join(__dirname, '..', '..', 'data', 'uploads');
-        const filePath = path.join(uploadDir, filename);
+        // Buscar el archivo de forma segura previniendo Path Traversal
+        const uploadDir = path.resolve(__dirname, '..', '..', 'data', 'uploads');
+        const safeFilename = path.basename(filename || '');
+        const filePath = path.resolve(uploadDir, safeFilename);
         
-        if (!fs.existsSync(filePath)) {
+        if (!safeFilename || !filePath.startsWith(uploadDir) || !fs.existsSync(filePath)) {
             return res.status(400).json({ 
                 success: false, 
-                error: 'Archivo no encontrado. Suba el archivo nuevamente.' 
+                error: 'Archivo no encontrado o ruta inválida. Suba el archivo nuevamente.' 
             });
         }
 
