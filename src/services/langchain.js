@@ -93,6 +93,8 @@ class LangChainService {
             return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timeoutId));
         };
 
+        const sentImages = [];
+
         try {
             const MapsService = require('./maps');
             const calcularDistanciaTool = {
@@ -238,6 +240,12 @@ class LangChainService {
                                     if (fs.existsSync(fullPath)) {
                                         const imgBuffer = fs.readFileSync(fullPath);
                                         await WhatsAppManager.sendImageMessage(customerPhone, imgBuffer, `📷 ${product.name} — $${product.price}`, storeId);
+                                        sentImages.push({
+                                            url: `/media/${filename}`,
+                                            productName: product.name,
+                                            price: product.price,
+                                            caption: `📷 ${product.name} — $${product.price}`
+                                        });
                                         toolContent = `Foto del producto "${product.name}" enviada exitosamente por WhatsApp al cliente. Informale de forma amigable que ya se la enviaste.`;
                                     } else {
                                         toolContent = `El producto "${product.name}" tiene registrada una imagen pero el archivo no existe en el servidor.`;
@@ -285,7 +293,8 @@ class LangChainService {
                         appointment: null,
                         booking: null,
                         requiere_humano: false,
-                        es_spam: true
+                        es_spam: true,
+                        images: sentImages
                     };
                 }
 
@@ -296,7 +305,8 @@ class LangChainService {
                         appointment: null,
                         booking: null,
                         requiere_humano: true,
-                        es_spam: false
+                        es_spam: false,
+                        images: sentImages
                     };
                 }
 
@@ -307,7 +317,8 @@ class LangChainService {
                         order: null,
                         appointment: null,
                         booking: extractedData,
-                        requiere_humano: false
+                        requiere_humano: false,
+                        images: sentImages
                     };
                 } else if (isClinicMode && extractedData.cita_completa) {
                     this._completeConversation(storeId, customerPhone);
@@ -316,7 +327,8 @@ class LangChainService {
                         order: null,
                         appointment: extractedData,
                         booking: null,
-                        requiere_humano: false
+                        requiere_humano: false,
+                        images: sentImages
                     };
                 } else if (!isClinicMode && !isHostelMode && extractedData.pedido_completo) {
                     this._completeConversation(storeId, customerPhone);
@@ -325,7 +337,8 @@ class LangChainService {
                         order: extractedData,
                         appointment: null,
                         booking: null,
-                        requiere_humano: false
+                        requiere_humano: false,
+                        images: sentImages
                     };
                 }
             }
@@ -335,7 +348,8 @@ class LangChainService {
                 order: null,
                 appointment: null,
                 booking: null,
-                requiere_humano: false
+                requiere_humano: false,
+                images: sentImages
             };
         } catch (error) {
             const elapsedMs = Date.now() - startTime;
@@ -349,7 +363,8 @@ class LangChainService {
                 order: null,
                 appointment: null,
                 booking: null,
-                requiere_humano: false
+                requiere_humano: false,
+                images: sentImages
             };
         }
     }

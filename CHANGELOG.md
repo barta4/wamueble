@@ -1,6 +1,12 @@
 # Registro de Actualizaciones (Changelog)
 
-## v2.5.0 — Auditoría de Seguridad, Rendimiento y Docker Release v2.5
+## v3.3.0 — Simulador Multimodal (Imágenes, Audio Avanzado y Modo Hostel)
+- **Soporte Completo de Imágenes en Simulador:** Subida de fotos vía botón 📎, Drag & Drop y pegado desde portapapeles (`Ctrl+V`), previsualización antes de enviar y análisis con modelos de visión (`visionService`).
+- **Renderizado de Fotos Despachadas por el Bot:** La herramienta `enviar_foto_producto` devuelve metadatos de las fotos de catálogo para mostrarlas como tarjetas interactivas de producto en el simulador.
+- **Mejoras en Audio del Simulador:** Reproductor interactivo `<audio controls>` en la burbuja del usuario, etiqueta visual de transcripción Whisper (`📝 Transcripción`) y cronómetro en vivo de grabación.
+- **Soporte de Reservas de Hostel en Simulación:** Integración completa de `result.booking` con creación de reservas y emisión por WebSockets en `/api/simulate`.
+- **Herramientas de Operador:** Botón para reiniciar conversación / borrar memoria en 1 clic (`POST /api/simulate/reset`) e indicador de telemetría de latencia de IA.
+- **Despliegue (Docker):** Compilación y publicación de la imagen `alfredobartaburu/urubot:v3.3` y `latest` para `linux/amd64`.
 - **Seguridad en WebSockets:** Se implementó autenticación estricta con `express-session` en los sockets de pedidos, evitando cruces de datos entre tiendas.
 - **Rendimiento Masivo en Excel:** Se envolvió el procesamiento y la inserción de registros de Excel en una transacción única de SQLite, reduciendo exponencialmente los bloqueos I/O y tiempos de importación.
 - **Resiliencia de IA:** Se añadió un control de `timeout` (20 segundos) a las peticiones del LLM (LangChain) con mensajes automáticos de fallback ante caídas de proveedores (OpenAI/Anthropic).
