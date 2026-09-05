@@ -177,6 +177,9 @@ function runMigrations() {
     try { db.prepare("ALTER TABLE conversations ADD COLUMN is_archived INTEGER DEFAULT 0").run(); } catch(e) {}
     try { db.prepare("ALTER TABLE conversations ADD COLUMN is_blocked INTEGER DEFAULT 0").run(); } catch(e) {}
     try { db.prepare("ALTER TABLE conversations ADD COLUMN is_deleted INTEGER DEFAULT 0").run(); } catch(e) {}
+    try { db.prepare("ALTER TABLE conversations ADD COLUMN assigned_to INTEGER DEFAULT NULL").run(); } catch(e) {}
+    try { db.prepare("ALTER TABLE conversations ADD COLUMN assigned_name TEXT DEFAULT NULL").run(); } catch(e) {}
+    try { db.prepare("CREATE INDEX IF NOT EXISTS idx_conversations_assigned ON conversations(store_id, assigned_to)").run(); } catch(e) {}
 
     // Columnas opcionales para migración transparente
     try { db.prepare("ALTER TABLE stores ADD COLUMN clinic_mode INTEGER DEFAULT 0").run(); } catch(e) {}

@@ -150,6 +150,8 @@ CREATE TABLE IF NOT EXISTS conversations (
     is_archived INTEGER DEFAULT 0,
     is_blocked INTEGER DEFAULT 0,
     is_deleted INTEGER DEFAULT 0,
+    assigned_to INTEGER DEFAULT NULL,
+    assigned_name TEXT DEFAULT NULL,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );

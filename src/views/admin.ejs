@@ -607,6 +607,7 @@
                         <button class="inbox-nav-item" data-filter="archived" onclick="window.ChatProInstance && window.ChatProInstance.setFilter('archived')">
                             <span class="nav-icon">🗄️</span>
                             Archivados
+                            <span class="nav-badge" id="navBadgeArch">0</span>
                         </button>
                         <div class="inbox-nav-divider"></div>
                         <button class="inbox-nav-item" onclick="switchTab('customers')">
@@ -664,6 +665,17 @@
                         <div id="infoAvatar" class="info-avatar-large">?</div>
                         <div class="info-name" id="infoName">Cargando...</div>
                         <div class="info-phone" id="infoPhone">...</div>
+
+                        <!-- Sección de Asignación de Agente (Estilo Chatwoot) -->
+                        <div class="info-assign-box">
+                            <div class="info-assign-header">
+                                <span class="info-assign-label">👤 Agente Asignado</span>
+                                <button type="button" class="btn-assign-me-link" onclick="window.ChatProInstance && window.ChatProInstance.assignToMe(window.ChatProInstance.activePhone)">🙋‍♂️ Asignarme</button>
+                            </div>
+                            <select id="infoAssignSelect" class="info-assign-select" onchange="window.ChatProInstance && window.ChatProInstance.assignChat(window.ChatProInstance.activePhone, this.value)">
+                                <option value="">-- Sin asignar --</option>
+                            </select>
+                        </div>
                         
                         <div class="info-actions">
                             <button class="info-action-btn" id="infoBtnFav" onclick="window.ChatProInstance.toggleFavorite(window.ChatProInstance.activePhone)">⭐ Marcar como favorito</button>
@@ -678,6 +690,9 @@
             
             <!-- Context Menu (Click derecho) -->
             <div id="chatContextMenu" class="chat-context-menu">
+                <div class="context-menu-item" onclick="window.ChatProInstance.assignToMe(window.ChatProInstance.contextMenuTarget.customer_phone)"><span style="width:20px;text-align:center;">🙋‍♂️</span> <span id="ctxAssignMeText">Asignarme a mí</span></div>
+                <div class="context-menu-item" onclick="window.ChatProInstance.unassignChat(window.ChatProInstance.contextMenuTarget.customer_phone)" id="ctxUnassignItem"><span style="width:20px;text-align:center;">👤</span> Desasignar agente</div>
+                <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin:4px 0;">
                 <div class="context-menu-item" onclick="window.ChatProInstance.toggleFavorite(window.ChatProInstance.contextMenuTarget.customer_phone)"><span style="width:20px;text-align:center;">⭐</span> <span id="ctxFavText">Marcar como favorito</span></div>
                 <div class="context-menu-item" onclick="window.ChatProInstance.toggleArchive(window.ChatProInstance.contextMenuTarget.customer_phone)"><span style="width:20px;text-align:center;">📥</span> <span id="ctxArchText">Archivar chat</span></div>
                 <div class="context-menu-item" onclick="window.ChatProInstance.promptClear(window.ChatProInstance.contextMenuTarget.customer_phone)"><span style="width:20px;text-align:center;">🗑️</span> Vaciar mensajes</div>
@@ -1812,6 +1827,7 @@
         window.STORE_ID = Number('<%= store ? store.id : 0 %>');
         window.STORE_CLINIC_MODE = Number('<%= store ? (store.clinic_mode || 0) : 0 %>');
         window.STORE_HOSTEL_MODE = Number('<%= store ? (store.hostel_mode || 0) : 0 %>');
+        window.CURRENT_USER = <%- JSON.stringify({ id: user ? user.id : null, name: user ? user.name : 'Admin', role: user ? user.role : 'owner' }) %>;
     </script>
     <script src="/js/admin.js"></script>
     <script src="/js/chat-pro.js"></script>

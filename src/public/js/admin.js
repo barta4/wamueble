@@ -1511,19 +1511,35 @@ async function openChat(phone, displayName = '') {
             </button>
         `;
         
+        const isFav = Boolean(data.is_favorite);
+        const isArch = Boolean(data.is_archived);
+        const archBadge = isArch ? `<span class="chat-archived-banner-badge" id="chatHeaderArchBadge">🗄️ Archivado</span>` : `<span class="chat-archived-banner-badge" id="chatHeaderArchBadge" style="display:none;">🗄️ Archivado</span>`;
+
         const chatHeaderHtml = window.ChatProInstance ? `
             <div class="chat-header-profile" id="chatHeaderProfile">
                 <div class="chat-header-avatar">${displayHeader.substring(0, 2).toUpperCase()}</div>
                 <div class="chat-header-info-text">
-                    <span class="chat-header-name">${window.escapeHtml(displayHeader)}</span>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span class="chat-header-name">${window.escapeHtml(displayHeader)}</span>
+                        ${archBadge}
+                    </div>
                     <span class="chat-header-status">${window.formatPhone(phone)}</span>
                 </div>
             </div>
-            <div class="chat-header-actions">
+            <div class="chat-header-actions" id="chatHeaderActions">
+                <div class="chat-header-assign" id="chatHeaderAssign">
+                    ${window.ChatProInstance.renderAssignSelectHtml ? window.ChatProInstance.renderAssignSelectHtml(phone, data.assigned_to) : ''}
+                </div>
+                <button type="button" class="btn-chat-header-action ${isFav ? 'active' : ''}" id="headerBtnFav" onclick="window.ChatProInstance.toggleFavorite('${phone}')" title="${isFav ? 'Quitar de favoritos' : 'Marcar como favorito'}">
+                    ⭐
+                </button>
+                <button type="button" class="btn-chat-header-action ${isArch ? 'active' : ''}" id="headerBtnArch" onclick="window.ChatProInstance.toggleArchive('${phone}')" title="${isArch ? 'Desarchivar chat' : 'Archivar chat'}">
+                    ${isArch ? '🗄️ Desarchivar' : '📥 Archivar'}
+                </button>
                 ${data.needs_human ? 
                     `<button class="btn-resolve-pro" onclick="resolveChat('${phone}')">✅ Resolver</button>` : 
                     `<button class="btn-pause-pro" onclick="pauseChat('${phone}')">⏸️ Pausar IA</button>`}
-                <button class="btn-icon-chat" onclick="window.ChatProInstance.toggleInfoPanel()">⋮</button>
+                <button class="btn-icon-chat" onclick="window.ChatProInstance.toggleInfoPanel()" title="Info del contacto">⋮</button>
             </div>
         ` : `
             <div class="chat-header-info">

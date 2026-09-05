@@ -28,8 +28,70 @@ const chatUpload = multer({
 });
 
 /**
+ * GET /api/chats/counts
+ * Obtener contadores rápidos para filtros y pestañas (Mi bandeja, Favoritos, Archivados, Mías, Sin Asignar)
+ */
+router.get('/counts', requireAuth, (req, res) => {
+    try {
+        const storeId = req.user.store_id;
+        const currentUserId = req.user.id;
+        const db = getDb();
+
+        const row = db.prepare(`
+            SELECT 
+                COUNT(CASE WHEN is_archived = 0 THEN 1 END) as all_count,
+                COUNT(CASE WHEN is_archived = 0 AND is_favorite = 1 THEN 1 END) as fav_count,
+                COUNT(CASE WHEN is_archived = 1 THEN 1 END) as arch_count,
+                COUNT(CASE WHEN is_archived = 0 AND assigned_to = ? THEN 1 END) as mine_count,
+                COUNT(CASE WHEN is_archived = 0 AND (assigned_to IS NULL OR assigned_to = 0) THEN 1 END) as unassigned_count
+            FROM conversations
+            WHERE store_id = ? AND is_deleted = 0
+        `).get(currentUserId, storeId);
+
+        res.json({
+            all: (row && row.all_count) || 0,
+            favorites: (row && row.fav_count) || 0,
+            archived: (row && row.arch_count) || 0,
+            mine: (row && row.mine_count) || 0,
+            unassigned: (row && row.unassigned_count) || 0
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * GET /api/chats/operators
+ * Obtener lista de operadores / agentes de la tienda para asignaciones.
+ */
+router.get('/operators', requireAuth, (req, res) => {
+    try {
+        const storeId = req.user.store_id;
+        const db = getDb();
+
+        let users = [];
+        if (storeId) {
+            users = db.prepare(`
+                SELECT id, name, email, role FROM users 
+                WHERE store_id = ? OR role = 'superadmin' OR (store_id IS NULL AND role = 'owner')
+                ORDER BY name ASC
+            `).all(storeId);
+        } else {
+            users = db.prepare(`
+                SELECT id, name, email, role FROM users 
+                ORDER BY name ASC
+            `).all();
+        }
+
+        res.json(users);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
  * GET /api/chats
- * Obtener lista de chats (conversaciones activas y derivaciones).
+ * Obtener lista de chats (conversaciones activas, archivadas o favoritas).
  */
 router.get('/', requireAuth, (req, res) => {
     try {
@@ -41,6 +103,7 @@ router.get('/', requireAuth, (req, res) => {
         let query = `
             SELECT c.id, c.customer_phone, c.messages, c.status, c.needs_human, c.updated_at, 
                    c.is_favorite, c.is_archived, c.is_blocked, c.is_deleted,
+                   c.assigned_to, c.assigned_name,
                    cust.name as customer_name
             FROM conversations c
             LEFT JOIN customers cust ON c.customer_phone = cust.phone AND cust.store_id = c.store_id
@@ -48,7 +111,7 @@ router.get('/', requireAuth, (req, res) => {
         `;
         
         if (filter === 'favorites') {
-            query += ' AND c.is_favorite = 1';
+            query += ' AND c.is_favorite = 1 AND c.is_archived = 0';
         } else if (filter === 'archived') {
             query += ' AND c.is_archived = 1';
         } else {
@@ -76,9 +139,11 @@ router.get('/', requireAuth, (req, res) => {
                 customer_name: conv.customer_name || conv.customer_phone,
                 status: conv.status,
                 needs_human: conv.needs_human,
-                is_favorite: conv.is_favorite,
-                is_archived: conv.is_archived,
-                is_blocked: conv.is_blocked,
+                is_favorite: conv.is_favorite || 0,
+                is_archived: conv.is_archived || 0,
+                is_blocked: conv.is_blocked || 0,
+                assigned_to: conv.assigned_to || null,
+                assigned_name: conv.assigned_name || null,
                 last_message: lastMessage.substring(0, 100),
                 message_count: messages.length,
                 updated_at: conv.updated_at
@@ -93,7 +158,7 @@ router.get('/', requireAuth, (req, res) => {
 
 /**
  * GET /api/chats/:phone/messages
- * Obtener mensajes de una conversación específica.
+ * Obtener mensajes y metadatos de una conversación específica.
  */
 router.get('/:phone/messages', requireAuth, (req, res) => {
     try {
@@ -120,7 +185,12 @@ router.get('/:phone/messages', requireAuth, (req, res) => {
             conversation_id: conv.id,
             messages,
             needs_human: conv.needs_human,
-            status: conv.status
+            status: conv.status,
+            is_favorite: conv.is_favorite || 0,
+            is_archived: conv.is_archived || 0,
+            is_blocked: conv.is_blocked || 0,
+            assigned_to: conv.assigned_to || null,
+            assigned_name: conv.assigned_name || null
         });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -263,6 +333,53 @@ router.post('/:phone/send-media', requireAuth, chatUpload.single('media'), async
 });
 
 /**
+ * PATCH /api/chats/:phone/assign
+ * Asignar conversación a un operador/agente.
+ */
+router.patch('/:phone/assign', requireAuth, (req, res) => {
+    try {
+        const storeId = req.user.store_id;
+        const db = getDb();
+        const phone = req.params.phone;
+        const { userId } = req.body;
+
+        let targetId = null;
+        let targetName = null;
+
+        if (userId === 'me' || userId === req.user.id || userId === String(req.user.id)) {
+            targetId = req.user.id;
+            targetName = req.user.name;
+        } else if (userId && Number(userId) > 0) {
+            const targetUser = db.prepare('SELECT id, name FROM users WHERE id = ?').get(Number(userId));
+            if (!targetUser) {
+                return res.status(404).json({ error: 'Operador no encontrado' });
+            }
+            targetId = targetUser.id;
+            targetName = targetUser.name;
+        }
+
+        db.prepare(`
+            UPDATE conversations 
+            SET assigned_to = ?, assigned_name = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE store_id = ? AND customer_phone = ?
+        `).run(targetId, targetName, storeId, phone);
+
+        const io = req.app.get('io');
+        if (io) {
+            io.to('admin').emit('chat-assign', {
+                customer_phone: phone,
+                assigned_to: targetId,
+                assigned_name: targetName
+            });
+        }
+
+        res.json({ success: true, assigned_to: targetId, assigned_name: targetName });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
  * PATCH /api/chats/:phone/favorite
  * Toggle favorito.
  */
@@ -273,11 +390,22 @@ router.patch('/:phone/favorite', requireAuth, (req, res) => {
         const phone = req.params.phone;
         
         db.prepare(`
-            UPDATE conversations SET is_favorite = CASE WHEN is_favorite = 1 THEN 0 ELSE 1 END
+            UPDATE conversations SET is_favorite = CASE WHEN is_favorite = 1 THEN 0 ELSE 1 END, updated_at = CURRENT_TIMESTAMP
             WHERE store_id = ? AND customer_phone = ?
         `).run(storeId, phone);
+
+        const conv = db.prepare('SELECT is_favorite FROM conversations WHERE store_id = ? AND customer_phone = ?').get(storeId, phone);
+        const isFav = conv ? conv.is_favorite : 0;
+
+        const io = req.app.get('io');
+        if (io) {
+            io.to('admin').emit('chat-meta', {
+                customer_phone: phone,
+                is_favorite: isFav
+            });
+        }
         
-        res.json({ success: true });
+        res.json({ success: true, is_favorite: isFav });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -294,11 +422,22 @@ router.patch('/:phone/archive', requireAuth, (req, res) => {
         const phone = req.params.phone;
         
         db.prepare(`
-            UPDATE conversations SET is_archived = CASE WHEN is_archived = 1 THEN 0 ELSE 1 END
+            UPDATE conversations SET is_archived = CASE WHEN is_archived = 1 THEN 0 ELSE 1 END, updated_at = CURRENT_TIMESTAMP
             WHERE store_id = ? AND customer_phone = ?
         `).run(storeId, phone);
+
+        const conv = db.prepare('SELECT is_archived FROM conversations WHERE store_id = ? AND customer_phone = ?').get(storeId, phone);
+        const isArch = conv ? conv.is_archived : 0;
+
+        const io = req.app.get('io');
+        if (io) {
+            io.to('admin').emit('chat-meta', {
+                customer_phone: phone,
+                is_archived: isArch
+            });
+        }
         
-        res.json({ success: true });
+        res.json({ success: true, is_archived: isArch });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -315,28 +454,39 @@ router.patch('/:phone/block', requireAuth, (req, res) => {
         const phone = req.params.phone;
         
         db.prepare(`
-            UPDATE conversations SET is_blocked = CASE WHEN is_blocked = 1 THEN 0 ELSE 1 END
+            UPDATE conversations SET is_blocked = CASE WHEN is_blocked = 1 THEN 0 ELSE 1 END, updated_at = CURRENT_TIMESTAMP
             WHERE store_id = ? AND customer_phone = ?
         `).run(storeId, phone);
+
+        const conv = db.prepare('SELECT is_blocked FROM conversations WHERE store_id = ? AND customer_phone = ?').get(storeId, phone);
+        const isBlocked = conv ? conv.is_blocked : 0;
+
+        const io = req.app.get('io');
+        if (io) {
+            io.to('admin').emit('chat-meta', {
+                customer_phone: phone,
+                is_blocked: isBlocked
+            });
+        }
         
-        res.json({ success: true });
+        res.json({ success: true, is_blocked: isBlocked });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
 /**
- * DELETE /api/chats/:phone
- * Eliminar chat.
+ * DELETE & POST /api/chats/:phone
+ * Eliminar chat de la lista activa.
  */
-router.delete('/:phone', requireAuth, (req, res) => {
+const handleDeleteChat = (req, res) => {
     try {
         const storeId = req.user.store_id;
         const db = getDb();
         const phone = req.params.phone;
         
         db.prepare(`
-            UPDATE conversations SET is_deleted = 1
+            UPDATE conversations SET is_deleted = 1, updated_at = CURRENT_TIMESTAMP
             WHERE store_id = ? AND customer_phone = ?
         `).run(storeId, phone);
         
@@ -344,13 +494,15 @@ router.delete('/:phone', requireAuth, (req, res) => {
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
-});
+};
+router.delete('/:phone', requireAuth, handleDeleteChat);
+router.post('/:phone/delete', requireAuth, handleDeleteChat);
 
 /**
- * DELETE /api/chats/:phone/clear
+ * DELETE & POST /api/chats/:phone/clear
  * Vaciar mensajes de un chat.
  */
-router.delete('/:phone/clear', requireAuth, (req, res) => {
+const handleClearChat = (req, res) => {
     try {
         const storeId = req.user.store_id;
         const db = getDb();
@@ -365,7 +517,9 @@ router.delete('/:phone/clear', requireAuth, (req, res) => {
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
-});
+};
+router.delete('/:phone/clear', requireAuth, handleClearChat);
+router.post('/:phone/clear', requireAuth, handleClearChat);
 
 /**
  * POST /api/chats/:phone/note

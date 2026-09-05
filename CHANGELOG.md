@@ -1,5 +1,12 @@
 # Registro de Actualizaciones (Changelog)
 
+## v3.6.0 — Chat Pro: Asignación de Agentes, Favoritos, Archivado y Sincronización en Vivo
+- **Asignación de Operadores/Agentes en Tiempo Real:** Selector de agentes integrado en la cabecera del chat activo y en la barra lateral de información. Nuevas columnas `assigned_to` y `assigned_name` en base de datos, con eventos WebSocket `chat-assign`.
+- **Bandeja de Favoritos y Archivados Funcional:** Implementación completa del filtro `setFilter()` con aislamiento estricto de chats activos vs archivados, botones directos en la cabecera y menú contextual rápido.
+- **Contadores Badge Centralizados:** Nuevo endpoint `GET /api/chats/counts` para actualización inmediata de contadores en vivo (*Mi bandeja*, *Favoritos*, *Archivados*, *Mías*, *Sin asignar*).
+- **Corrección de Carga en Chat Pro:** Reparado error de sintaxis en `onChatOpened` que impedía la inicialización de `window.ChatProInstance` en el navegador.
+- **Despliegue (Docker):** Compilación y publicación multi-plataforma de la imagen oficial `alfredobartaburu/urubot:v3.6` y `latest` para `linux/amd64`.
+
 ## v3.5.0 — Bandeja Estilo Chatwoot, Reproductor In-line y Resiliencia en Simulación
 - **Bandeja de Entrada Estilo Chatwoot:** Filtro de conversaciones por pestañas (*Todos*, *Mías*, *Sin asignar*) con contadores badge en vivo y foco automático en caja de texto.
 - **Reproductor de Audio Compacto In-line:** Nuevo reproductor para audios y notas de voz con control de velocidad (1x, 1.5x, 2x), barra interactiva de reproducción, descarga y tiempo transcurrido.

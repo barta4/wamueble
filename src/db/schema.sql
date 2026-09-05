@@ -140,6 +140,12 @@ CREATE TABLE IF NOT EXISTS conversations (
     messages TEXT DEFAULT '[]',
     status TEXT DEFAULT 'active',
     needs_human INTEGER DEFAULT 0,
+    is_favorite INTEGER DEFAULT 0,
+    is_archived INTEGER DEFAULT 0,
+    is_blocked INTEGER DEFAULT 0,
+    is_deleted INTEGER DEFAULT 0,
+    assigned_to INTEGER DEFAULT NULL,
+    assigned_name TEXT DEFAULT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE CASCADE

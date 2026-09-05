@@ -9,24 +9,28 @@ class ChatPro {
         this.chatwootTab = 'all'; // all, mine, unassigned
         this.searchQuery = '';
         this.activePhone = null;
+        this.activeChat = null;
         this.chatData = [];
+        this.counts = { all: 0, favorites: 0, archived: 0, mine: 0, unassigned: 0 };
+        this.operators = [];
+        this.currentUser = window.CURRENT_USER || { id: null, name: 'Admin', role: 'owner' };
         this.searchTimeout = null;
         this.contextMenuTarget = null;
         
         this.init();
     }
 
-    init() {
+    async init() {
         this.bindEvents();
+        await this.loadOperators();
+
         // Override original loadChats behavior smoothly
-        const originalLoadChats = window.loadChats;
         window.loadChats = async () => {
             await this.loadChatsData();
             this.renderSidebar();
         };
         
         // Override original appendMessage to handle media
-        const originalAppendMessage = window.appendMessage;
         window.appendMessage = (message) => {
             this.appendMessagePro(message);
         };
@@ -37,6 +41,62 @@ class ChatPro {
             await originalOpenChat(phone, displayName);
             this.onChatOpened(phone);
         };
+
+        // Escuchar sockets para sincronización en tiempo real
+        this.setupSocketListeners();
+    }
+
+    setupSocketListeners() {
+        const checkAndBind = () => {
+            if (typeof socket !== 'undefined' && socket) {
+                socket.on('chat-assign', (data) => {
+                    const chat = this.chatData.find(c => c.customer_phone === data.customer_phone);
+                    if (chat) {
+                        chat.assigned_to = data.assigned_to;
+                        chat.assigned_name = data.assigned_name;
+                    }
+                    if (this.activePhone === data.customer_phone) {
+                        if (this.activeChat) {
+                            this.activeChat.assigned_to = data.assigned_to;
+                            this.activeChat.assigned_name = data.assigned_name;
+                        }
+                        const selectHeader = document.querySelector('#chatHeaderAssign select');
+                        if (selectHeader) selectHeader.value = data.assigned_to || '';
+                        const selectInfo = document.getElementById('infoAssignSelect');
+                        if (selectInfo) selectInfo.value = data.assigned_to || '';
+                    }
+                    this.loadChatsData().then(() => this.renderSidebar());
+                });
+
+                socket.on('chat-meta', (data) => {
+                    const chat = this.chatData.find(c => c.customer_phone === data.customer_phone);
+                    if (chat) {
+                        if (data.is_favorite !== undefined) chat.is_favorite = data.is_favorite;
+                        if (data.is_archived !== undefined) chat.is_archived = data.is_archived;
+                        if (data.is_blocked !== undefined) chat.is_blocked = data.is_blocked;
+                    }
+                    if (this.activePhone === data.customer_phone) {
+                        this.updateHeaderActionButtons(data.customer_phone, data);
+                        this.renderInfoPanel(data.customer_phone);
+                    }
+                    this.loadChatsData().then(() => this.renderSidebar());
+                });
+            } else {
+                setTimeout(checkAndBind, 500);
+            }
+        };
+        checkAndBind();
+    }
+
+    async loadOperators() {
+        try {
+            const res = await fetch('/api/chats/operators');
+            if (res.ok) {
+                this.operators = await res.json();
+            }
+        } catch (e) {
+            console.warn('Error al cargar operadores:', e);
+        }
     }
 
     bindEvents() {
@@ -51,16 +111,6 @@ class ChatPro {
                 }, 300);
             });
         }
-
-        // Filters
-        document.querySelectorAll('.chat-filter-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                document.querySelectorAll('.chat-filter-btn').forEach(b => b.classList.remove('active'));
-                e.target.classList.add('active');
-                this.currentFilter = e.target.dataset.filter;
-                window.loadChats(); // Reload from API with new filter
-            });
-        });
 
         // Context Menu outside click
         document.addEventListener('click', (e) => {
@@ -83,14 +133,34 @@ class ChatPro {
         }
     }
 
+    async setFilter(filter) {
+        this.currentFilter = filter; // 'all', 'favorites', 'archived'
+
+        // Actualizar active class en items del menú izquierdo
+        document.querySelectorAll('.inbox-nav-item[data-filter]').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.filter === filter);
+        });
+
+        // Actualizar título del sidebar en Columna 2
+        const headerTitle = document.querySelector('.chat-sidebar-header h3');
+        if (headerTitle) {
+            if (filter === 'favorites') {
+                headerTitle.textContent = '⭐ Favoritos';
+            } else if (filter === 'archived') {
+                headerTitle.textContent = '🗄️ Archivados';
+            } else {
+                headerTitle.textContent = 'Bandeja de entrada';
+            }
+        }
+
+        await this.loadChatsData();
+        this.renderSidebar();
+    }
+
     setChatwootTab(tab) {
         this.chatwootTab = tab;
         document.querySelectorAll('#chatwootFilterTabs .cw-tab-btn').forEach(btn => {
-            if (btn.dataset.tab === tab) {
-                btn.classList.add('active');
-            } else {
-                btn.classList.remove('active');
-            }
+            btn.classList.toggle('active', btn.dataset.tab === tab);
         });
         this.renderSidebar();
     }
@@ -100,29 +170,48 @@ class ChatPro {
         if (!container) return;
         
         try {
-            const res = await fetch(`/api/chats?filter=${this.currentFilter}`);
-            if (!res.ok) throw new Error('Error al cargar chats');
-            this.chatData = await res.json();
-            window._chatData = this.chatData; // Expose to global scope if needed
+            const [chatsRes, countsRes] = await Promise.all([
+                fetch(`/api/chats?filter=${this.currentFilter}`),
+                fetch('/api/chats/counts').catch(() => null)
+            ]);
 
-            // Actualizar contadores de las pestañas Chatwoot
-            const totalCount = this.chatData.length;
-            const mineCount = this.chatData.filter(c => c.needs_human === 1).length;
-            const unassignedCount = this.chatData.filter(c => !c.needs_human).length;
+            if (!chatsRes.ok) throw new Error('Error al cargar chats');
+            this.chatData = await chatsRes.json();
+            window._chatData = this.chatData;
 
-            const bAll = document.getElementById('cwBadgeAll');
-            const bMine = document.getElementById('cwBadgeMine');
-            const bUnassigned = document.getElementById('cwBadgeUnassigned');
-            if (bAll) bAll.textContent = totalCount;
-            if (bMine) bMine.textContent = mineCount;
-            if (bUnassigned) bUnassigned.textContent = unassignedCount;
+            if (countsRes && countsRes.ok) {
+                this.counts = await countsRes.json();
+            } else {
+                this.counts = {
+                    all: this.chatData.filter(c => !c.is_archived).length,
+                    favorites: this.chatData.filter(c => c.is_favorite && !c.is_archived).length,
+                    archived: this.chatData.filter(c => c.is_archived).length,
+                    mine: this.chatData.filter(c => c.assigned_to === this.currentUser.id && !c.is_archived).length,
+                    unassigned: this.chatData.filter(c => (!c.assigned_to || c.assigned_to === 0) && !c.is_archived).length
+                };
+            }
 
-            const navAll = document.getElementById('navBadgeAll');
-            if (navAll) navAll.textContent = totalCount;
+            this.updateBadges();
         } catch (error) {
             console.error(error);
             container.innerHTML = '<div class="loading">Error al cargar chats</div>';
         }
+    }
+
+    updateBadges() {
+        const navAll = document.getElementById('navBadgeAll');
+        const navFav = document.getElementById('navBadgeFav');
+        const navArch = document.getElementById('navBadgeArch');
+        if (navAll) navAll.textContent = this.counts.all || 0;
+        if (navFav) navFav.textContent = this.counts.favorites || 0;
+        if (navArch) navArch.textContent = this.counts.archived || 0;
+
+        const bAll = document.getElementById('cwBadgeAll');
+        const bMine = document.getElementById('cwBadgeMine');
+        const bUnassigned = document.getElementById('cwBadgeUnassigned');
+        if (bAll) bAll.textContent = this.counts.all || 0;
+        if (bMine) bMine.textContent = this.counts.mine || 0;
+        if (bUnassigned) bUnassigned.textContent = this.counts.unassigned || 0;
     }
 
     renderSidebar() {
@@ -133,21 +222,30 @@ class ChatPro {
 
         // Filtro por pestañas Chatwoot (Mías, Sin Asignar, Todos)
         if (this.chatwootTab === 'mine') {
-            filtered = filtered.filter(c => c.needs_human === 1);
+            filtered = filtered.filter(c => 
+                (this.currentUser.id && Number(c.assigned_to) === Number(this.currentUser.id)) || 
+                (this.currentUser.name && c.assigned_name && c.assigned_name.toLowerCase() === this.currentUser.name.toLowerCase())
+            );
         } else if (this.chatwootTab === 'unassigned') {
-            filtered = filtered.filter(c => !c.needs_human);
+            filtered = filtered.filter(c => !c.assigned_to || Number(c.assigned_to) === 0);
         }
         
         if (this.searchQuery) {
             filtered = filtered.filter(c => {
                 const name = (c.customer_name || '').toLowerCase();
                 const phone = (c.customer_phone || '').toLowerCase();
-                return name.includes(this.searchQuery) || phone.includes(this.searchQuery);
+                const assigned = (c.assigned_name || '').toLowerCase();
+                return name.includes(this.searchQuery) || phone.includes(this.searchQuery) || assigned.includes(this.searchQuery);
             });
         }
 
         if (filtered.length === 0) {
-            container.innerHTML = '<div class="loading" style="margin-top:20px;">No hay conversaciones en esta bandeja.</div>';
+            let emptyMsg = 'No hay conversaciones en esta bandeja.';
+            if (this.currentFilter === 'archived') emptyMsg = 'No hay chats archivados.';
+            else if (this.currentFilter === 'favorites') emptyMsg = 'No tienes chats marcados como favoritos.';
+            else if (this.chatwootTab === 'mine') emptyMsg = 'No tienes conversaciones asignadas a ti.';
+            else if (this.chatwootTab === 'unassigned') emptyMsg = 'No hay conversaciones sin asignar.';
+            container.innerHTML = `<div class="loading" style="margin-top:20px;">${emptyMsg}</div>`;
             return;
         }
 
@@ -175,7 +273,10 @@ class ChatPro {
 
             let indicators = '';
             if (c.is_favorite) indicators += '<span class="chat-indicator favorite" title="Favorito">⭐</span>';
-            if (c.is_archived) indicators += '<span class="chat-indicator archived" title="Archivado">📥</span>';
+            if (c.is_archived) indicators += '<span class="chat-indicator archived" title="Archivado">🗄️</span>';
+            if (c.assigned_name) {
+                indicators += `<span class="chat-indicator assigned" title="Asignado a ${window.escapeHtml(c.assigned_name)}">👤 ${window.escapeHtml(c.assigned_name.split(' ')[0])}</span>`;
+            }
             if (c.needs_human) indicators += '<span class="badge-human-needs" style="margin-left:4px;">Atención</span>';
 
             let previewText = c.last_message || 'Sin mensajes';
@@ -212,6 +313,7 @@ class ChatPro {
 
     onChatOpened(phone) {
         this.activePhone = phone;
+        this.activeChat = this.chatData.find(c => c.customer_phone === phone) || null;
         this.renderSidebar(); // Update active state visually
         
         // Re-render info panel if open
@@ -511,16 +613,31 @@ class ChatPro {
         const menu = document.getElementById('chatContextMenu');
         if (!menu) return;
 
-        // Update menu text based on current state
-        document.getElementById('ctxFavText').textContent = chatItem.is_favorite ? 'Quitar de favoritos' : 'Marcar como favorito';
-        document.getElementById('ctxArchText').textContent = chatItem.is_archived ? 'Desarchivar' : 'Archivar chat';
-        document.getElementById('ctxBlockText').textContent = chatItem.is_blocked ? 'Desbloquear contacto' : 'Bloquear contacto';
+        // Actualizar textos según estado actual
+        const ctxFav = document.getElementById('ctxFavText');
+        if (ctxFav) ctxFav.textContent = chatItem.is_favorite ? 'Quitar de favoritos' : 'Marcar como favorito';
 
-        // Position
+        const ctxArch = document.getElementById('ctxArchText');
+        if (ctxArch) ctxArch.textContent = chatItem.is_archived ? 'Desarchivar chat' : 'Archivar chat';
+
+        const ctxBlock = document.getElementById('ctxBlockText');
+        if (ctxBlock) ctxBlock.textContent = chatItem.is_blocked ? 'Desbloquear contacto' : 'Bloquear contacto';
+
+        const ctxAssignMe = document.getElementById('ctxAssignMeText');
+        if (ctxAssignMe) {
+            const isMine = this.currentUser.id && Number(chatItem.assigned_to) === Number(this.currentUser.id);
+            ctxAssignMe.textContent = isMine ? 'Asignado a mí (✓)' : 'Asignarme a mí';
+        }
+
+        const ctxUnassign = document.getElementById('ctxUnassignItem');
+        if (ctxUnassign) {
+            ctxUnassign.style.display = (chatItem.assigned_to && Number(chatItem.assigned_to) > 0) ? 'flex' : 'none';
+        }
+
+        // Posicionamiento
         menu.style.left = `${e.pageX}px`;
         menu.style.top = `${e.pageY}px`;
         
-        // Adjust if it goes off screen
         const rect = menu.getBoundingClientRect();
         if (e.pageX + rect.width > window.innerWidth) {
             menu.style.left = `${window.innerWidth - rect.width - 10}px`;
@@ -556,32 +673,150 @@ class ChatPro {
     }
 
     renderInfoPanel(phone) {
-        const chat = this.chatData.find(c => c.customer_phone === phone);
+        const chat = (this.chatData.find(c => c.customer_phone === phone)) || this.activeChat;
         if (!chat) return;
 
         const displayName = chat.customer_name ? chat.customer_name : window.formatPhone(phone);
         const initials = displayName.substring(0, 2).toUpperCase();
 
-        document.getElementById('infoAvatar').textContent = initials;
-        document.getElementById('infoAvatar').className = `info-avatar-large ${chat.is_blocked ? 'blocked' : ''}`;
-        document.getElementById('infoName').textContent = displayName;
-        document.getElementById('infoPhone').textContent = window.formatPhone(phone);
+        const avatarEl = document.getElementById('infoAvatar');
+        if (avatarEl) {
+            avatarEl.textContent = initials;
+            avatarEl.className = `info-avatar-large ${chat.is_blocked ? 'blocked' : ''}`;
+        }
+        const nameEl = document.getElementById('infoName');
+        if (nameEl) nameEl.textContent = displayName;
+        const phoneEl = document.getElementById('infoPhone');
+        if (phoneEl) phoneEl.textContent = window.formatPhone(phone);
         
+        // Poblar selector de asignación de operadores
+        const selectAssign = document.getElementById('infoAssignSelect');
+        if (selectAssign) {
+            let options = '<option value="">-- Sin asignar --</option>';
+            this.operators.forEach(op => {
+                const isSelected = (chat.assigned_to && Number(chat.assigned_to) === Number(op.id)) ? 'selected' : '';
+                options += `<option value="${op.id}" ${isSelected}>👤 ${window.escapeHtml(op.name)}</option>`;
+            });
+            selectAssign.innerHTML = options;
+        }
+
         const btnFav = document.getElementById('infoBtnFav');
         const btnArch = document.getElementById('infoBtnArch');
         const btnBlock = document.getElementById('infoBtnBlock');
         
-        btnFav.innerHTML = `${chat.is_favorite ? '⭐ Quitar de favoritos' : '⭐ Marcar como favorito'}`;
-        btnArch.innerHTML = `${chat.is_archived ? '📥 Desarchivar chat' : '📥 Archivar chat'}`;
-        btnBlock.innerHTML = `${chat.is_blocked ? '🔓 Desbloquear contacto' : '🚫 Bloquear contacto'}`;
+        if (btnFav) btnFav.innerHTML = `${chat.is_favorite ? '⭐ Quitar de favoritos' : '⭐ Marcar como favorito'}`;
+        if (btnArch) btnArch.innerHTML = `${chat.is_archived ? '🗄️ Desarchivar chat' : '📥 Archivar chat'}`;
+        if (btnBlock) btnBlock.innerHTML = `${chat.is_blocked ? '🔓 Desbloquear contacto' : '🚫 Bloquear contacto'}`;
+    }
+
+    renderAssignSelectHtml(phone, currentAssignedId) {
+        let options = '<option value="">-- Sin asignar --</option>';
+        this.operators.forEach(op => {
+            const isSelected = (currentAssignedId && Number(currentAssignedId) === Number(op.id)) ? 'selected' : '';
+            options += `<option value="${op.id}" ${isSelected}>👤 ${window.escapeHtml(op.name)}</option>`;
+        });
+        return `
+            <span class="chat-assign-label" title="Agente asignado">👤</span>
+            <select class="chat-header-assign-select" onchange="window.ChatProInstance.assignChat('${phone}', this.value)" title="Asignar conversación a un agente">
+                ${options}
+            </select>
+        `;
+    }
+
+    updateHeaderActionButtons(phone, updates = {}) {
+        const btnFav = document.getElementById('headerBtnFav');
+        const btnArch = document.getElementById('headerBtnArch');
+        const archBadge = document.getElementById('chatHeaderArchBadge');
+        const assignSelect = document.querySelector('#chatHeaderAssign select');
+
+        if (updates.is_favorite !== undefined && btnFav) {
+            btnFav.classList.toggle('active', Boolean(updates.is_favorite));
+            btnFav.title = updates.is_favorite ? 'Quitar de favoritos' : 'Marcar como favorito';
+        }
+        if (updates.is_archived !== undefined) {
+            if (btnArch) {
+                btnArch.classList.toggle('active', Boolean(updates.is_archived));
+                btnArch.innerHTML = updates.is_archived ? '🗄️ Desarchivar' : '📥 Archivar';
+                btnArch.title = updates.is_archived ? 'Desarchivar chat' : 'Archivar chat';
+            }
+            if (archBadge) {
+                archBadge.style.display = updates.is_archived ? 'inline-flex' : 'none';
+            }
+        }
+        if (updates.assigned_to !== undefined && assignSelect) {
+            assignSelect.value = updates.assigned_to || '';
+        }
     }
 
     // --- API Calls for Actions ---
 
+    async assignChat(phone, userId) {
+        try {
+            const targetId = userId === 'me' ? (this.currentUser.id || null) : (userId ? Number(userId) : null);
+            const res = await fetch(`/api/chats/${encodeURIComponent(phone)}/assign`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: targetId })
+            });
+            if (!res.ok) throw new Error('Error al asignar chat');
+            const data = await res.json();
+            
+            window.showToast(data.assigned_name ? `👤 Chat asignado a ${data.assigned_name}` : '👤 Chat desasignado', 'success');
+
+            // Actualizar estado en memoria
+            const chat = this.chatData.find(c => c.customer_phone === phone);
+            if (chat) {
+                chat.assigned_to = data.assigned_to;
+                chat.assigned_name = data.assigned_name;
+            }
+            if (this.activePhone === phone) {
+                if (this.activeChat) {
+                    this.activeChat.assigned_to = data.assigned_to;
+                    this.activeChat.assigned_name = data.assigned_name;
+                }
+                this.updateHeaderActionButtons(phone, { assigned_to: data.assigned_to });
+                this.renderInfoPanel(phone);
+            }
+            
+            await this.loadChatsData();
+            this.renderSidebar();
+        } catch (e) {
+            console.error(e);
+            window.showToast('Error al asignar agente', 'error');
+        }
+        this.hideContextMenu();
+    }
+
+    assignToMe(phone) {
+        if (!phone) return;
+        this.assignChat(phone, this.currentUser.id || 'me');
+    }
+
+    unassignChat(phone) {
+        if (!phone) return;
+        this.assignChat(phone, null);
+    }
+
     async toggleFavorite(phone) {
         try {
             const res = await fetch(`/api/chats/${encodeURIComponent(phone)}/favorite`, { method: 'PATCH' });
-            if (res.ok) window.loadChats();
+            if (res.ok) {
+                const data = await res.json();
+                const isFav = Boolean(data.is_favorite);
+                window.showToast(isFav ? '⭐ Marcado como favorito' : 'Quitado de favoritos', 'info');
+
+                const chat = this.chatData.find(c => c.customer_phone === phone);
+                if (chat) chat.is_favorite = isFav ? 1 : 0;
+
+                if (this.activePhone === phone) {
+                    if (this.activeChat) this.activeChat.is_favorite = isFav ? 1 : 0;
+                    this.updateHeaderActionButtons(phone, { is_favorite: isFav });
+                    this.renderInfoPanel(phone);
+                }
+
+                await this.loadChatsData();
+                this.renderSidebar();
+            }
         } catch (e) { console.error(e); window.showToast('Error de conexión', 'error'); }
         this.hideContextMenu();
     }
@@ -589,7 +824,23 @@ class ChatPro {
     async toggleArchive(phone) {
         try {
             const res = await fetch(`/api/chats/${encodeURIComponent(phone)}/archive`, { method: 'PATCH' });
-            if (res.ok) window.loadChats();
+            if (res.ok) {
+                const data = await res.json();
+                const isArch = Boolean(data.is_archived);
+                window.showToast(isArch ? '🗄️ Chat archivado' : '📬 Chat desarchivado', 'info');
+
+                const chat = this.chatData.find(c => c.customer_phone === phone);
+                if (chat) chat.is_archived = isArch ? 1 : 0;
+
+                if (this.activePhone === phone) {
+                    if (this.activeChat) this.activeChat.is_archived = isArch ? 1 : 0;
+                    this.updateHeaderActionButtons(phone, { is_archived: isArch });
+                    this.renderInfoPanel(phone);
+                }
+
+                await this.loadChatsData();
+                this.renderSidebar();
+            }
         } catch (e) { console.error(e); window.showToast('Error de conexión', 'error'); }
         this.hideContextMenu();
     }
@@ -598,8 +849,20 @@ class ChatPro {
         try {
             const res = await fetch(`/api/chats/${encodeURIComponent(phone)}/block`, { method: 'PATCH' });
             if (res.ok) {
-                window.loadChats();
-                if (this.activePhone === phone) this.renderInfoPanel(phone);
+                const data = await res.json();
+                const isBlocked = Boolean(data.is_blocked);
+                window.showToast(isBlocked ? '🚫 Contacto bloqueado' : '🔓 Contacto desbloqueado', 'info');
+
+                const chat = this.chatData.find(c => c.customer_phone === phone);
+                if (chat) chat.is_blocked = isBlocked ? 1 : 0;
+
+                if (this.activePhone === phone) {
+                    if (this.activeChat) this.activeChat.is_blocked = isBlocked ? 1 : 0;
+                    this.renderInfoPanel(phone);
+                }
+
+                await this.loadChatsData();
+                this.renderSidebar();
             }
         } catch (e) { console.error(e); window.showToast('Error de conexión', 'error'); }
         this.hideContextMenu();
