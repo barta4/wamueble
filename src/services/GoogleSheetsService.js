@@ -109,8 +109,15 @@ class GoogleSheetsService {
             throw new Error(`No se pudo acceder a la planilla de Google Sheets: ${lastError ? lastError.message : 'Error de descarga'}. Verificá que la planilla sea pública o compartida para cualquier persona con el enlace.`);
         }
 
-        // Parsear CSV usando XLSX
-        const workbook = XLSX.read(csvBuffer, { type: 'buffer' });
+        // Parsear CSV usando XLSX con codificación UTF-8 explícita para preservar tildes y caracteres especiales
+        let workbook;
+        try {
+            const csvString = Buffer.from(csvBuffer).toString('utf8');
+            workbook = XLSX.read(csvString, { type: 'string', codepage: 65001 });
+        } catch (e) {
+            workbook = XLSX.read(csvBuffer, { type: 'buffer', codepage: 65001 });
+        }
+
         const sheetName = workbook.SheetNames[0];
         if (!sheetName) {
             throw new Error('La planilla de Google Sheets no contiene hojas con datos.');
@@ -137,6 +144,32 @@ class GoogleSheetsService {
     }
 
     /**
+     * Normaliza URLs de imágenes (especialmente enlaces compartidos de Google Drive).
+     * Convierte enlaces de previsualización en enlaces directos renderizables.
+     */
+    static normalizeImageUrl(url) {
+        if (!url || typeof url !== 'string') return null;
+        let trimmed = url.trim();
+        if (!trimmed) return null;
+
+        // Caso Google Drive: drive.google.com/file/d/{ID}/view o open?id={ID}
+        if (trimmed.includes('drive.google.com')) {
+            const fileMatch = trimmed.match(/\/file\/d\/([a-zA-Z0-9_-]+)/i) || trimmed.match(/[?&]id=([a-zA-Z0-9_-]+)/i);
+            if (fileMatch) {
+                const fileId = fileMatch[1];
+                return `https://drive.google.com/uc?export=view&id=${fileId}`;
+            }
+        }
+
+        // Caso Dropbox: dl=0 -> dl=1 para enlace directo de descarga/render
+        if (trimmed.includes('dropbox.com') && trimmed.includes('dl=0')) {
+            return trimmed.replace('dl=0', 'dl=1');
+        }
+
+        return trimmed;
+    }
+
+    /**
      * Detección automática sugerida para mapeo de columnas según nombres comunes en español e inglés.
      */
     static autoDetectMapping(headers) {
@@ -148,7 +181,8 @@ class GoogleSheetsService {
             is_service: '',
             duration: '',
             available: '',
-            image_path: ''
+            image_path: '',
+            sku: ''
         };
 
         const patterns = {
@@ -159,7 +193,11 @@ class GoogleSheetsService {
             is_service: [/^(es_servicio|servicio|service|tipo)$/i],
             duration: [/^(duraci[oó]n|duration|tiempo|minutos|min)$/i],
             available: [/^(disponible|activo|stock|habilitado|available|active)$/i, /disponib|stock/i],
-            image_path: [/^(imagen|image|foto|photo|url_imagen|img)$/i, /imagen|foto/i]
+            image_path: [
+                /^(imagen|image|foto|photo|url_imagen|imagen_url|image_url|img_url|url_foto|foto_url|url|link|picture|portada|img)$/i,
+                /imagen|foto|image|picture/i
+            ],
+            sku: [/^(sku|c[oó]digo|code|cod|referencia|ref|id_producto)$/i, /codigo|código|sku/i]
         };
 
         for (const [field, regexList] of Object.entries(patterns)) {
@@ -171,6 +209,9 @@ class GoogleSheetsService {
                 }
             }
         }
+
+        // Alias para compatibilidad con pruebas y clientes
+        mapping.image = mapping.image_path;
 
         return mapping;
     }
@@ -251,14 +292,24 @@ class GoogleSheetsService {
                 db.prepare('DELETE FROM products WHERE store_id = ?').run(storeId);
             }
 
-            const checkProductStmt = db.prepare('SELECT id, is_service FROM products WHERE store_id = ? AND LOWER(TRIM(name)) = LOWER(TRIM(?))');
+            const checkProductStmt = db.prepare('SELECT id, is_service, image_path, sku FROM products WHERE store_id = ? AND LOWER(TRIM(name)) = LOWER(TRIM(?))');
             const insertProductStmt = db.prepare(`
-                INSERT INTO products (store_id, name, description, price, category, duration, is_service, image_path, available)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO products (store_id, name, description, price, category, duration, is_service, image_path, available, sku, prices_json)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
             const updateProductStmt = db.prepare(`
                 UPDATE products 
-                SET price = ?, description = ?, category = ?, duration = ?, is_service = ?, image_path = COALESCE(?, image_path), available = ?, updated_at = CURRENT_TIMESTAMP
+                SET price = ?, description = ?, category = ?, duration = ?, is_service = ?, 
+                    image_path = CASE 
+                        WHEN ? IS NOT NULL AND ? != '' THEN ? 
+                        ELSE image_path 
+                    END, 
+                    available = ?, 
+                    sku = CASE 
+                        WHEN ? IS NOT NULL AND ? != '' THEN ? 
+                        ELSE sku 
+                    END,
+                    updated_at = CURRENT_TIMESTAMP
                 WHERE id = ? AND store_id = ?
             `);
 
@@ -306,23 +357,42 @@ class GoogleSheetsService {
                     available = (aVal === 'no' || aVal === 'false' || aVal === '0' || aVal === 'agotado' || aVal === 'pausado') ? 0 : 1;
                 }
 
-                // Imagen
-                const imagePath = columnMapping.image_path && row[columnMapping.image_path] !== undefined
-                    ? String(row[columnMapping.image_path]).trim()
+                // Imagen (con normalización para Google Drive y protección contra sobreescritura con vacío)
+                const imageCol = columnMapping.image_path || columnMapping.image || columnMapping.foto || columnMapping.imagen;
+                const rawImage = imageCol && row[imageCol] !== undefined
+                    ? String(row[imageCol]).trim()
                     : null;
+                const imagePath = this.normalizeImageUrl(rawImage);
+
+                // SKU / Código de producto
+                const skuCol = columnMapping.sku || columnMapping.codigo || columnMapping.code;
+                const rawSku = skuCol && row[skuCol] !== undefined
+                    ? String(row[skuCol]).trim()
+                    : '';
 
                 try {
                     if (syncMode === 'replace') {
-                        insertProductStmt.run(storeId, name, description, price, category, duration, isService, imagePath, available);
+                        insertProductStmt.run(storeId, name, description, price, category, duration, isService, imagePath, available, rawSku, '[]');
                         inserted++;
                     } else {
-                        // Modo upsert
+                        // Modo upsert: preserva foto o sku si la celda viene vacía
                         const existing = checkProductStmt.get(storeId, name);
                         if (existing) {
-                            updateProductStmt.run(price, description, category, duration, isService, imagePath, available, existing.id, storeId);
+                            updateProductStmt.run(
+                                price, 
+                                description, 
+                                category, 
+                                duration, 
+                                isService, 
+                                imagePath, imagePath, imagePath, 
+                                available, 
+                                rawSku, rawSku, rawSku, 
+                                existing.id, 
+                                storeId
+                            );
                             updated++;
                         } else {
-                            insertProductStmt.run(storeId, name, description, price, category, duration, isService, imagePath, available);
+                            insertProductStmt.run(storeId, name, description, price, category, duration, isService, imagePath, available, rawSku, '[]');
                             inserted++;
                         }
                     }

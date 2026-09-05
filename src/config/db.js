@@ -183,6 +183,8 @@ function runMigrations() {
     try { db.prepare("ALTER TABLE stores ADD COLUMN hostel_mode INTEGER DEFAULT 0").run(); } catch(e) {}
     try { db.prepare("ALTER TABLE orders ADD COLUMN payment_status TEXT DEFAULT 'pending'").run(); } catch(e) {}
     try { db.prepare("ALTER TABLE products ADD COLUMN image_path TEXT").run(); } catch(e) {}
+    try { db.prepare("ALTER TABLE products ADD COLUMN sku TEXT DEFAULT ''").run(); } catch(e) {}
+    try { db.prepare("ALTER TABLE products ADD COLUMN prices_json TEXT DEFAULT '[]'").run(); } catch(e) {}
     try { db.prepare("CREATE INDEX IF NOT EXISTS idx_products_store ON products(store_id, available)").run(); } catch(e) {}
     try { db.prepare("CREATE INDEX IF NOT EXISTS idx_orders_store_status ON orders(store_id, status)").run(); } catch(e) {}
     try { db.prepare("CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(created_at DESC)").run(); } catch(e) {}

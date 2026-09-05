@@ -1,5 +1,6 @@
 const { HumanMessage, SystemMessage, AIMessage, ToolMessage } = require('@langchain/core/messages');
 const { createModel } = require('../utils/aiModelFactory');
+const axios = require('axios');
 const Product = require('../models/Product');
 const Order = require('../models/Order');
 const Appointment = require('../models/Appointment');
@@ -235,20 +236,36 @@ class LangChainService {
                         if (product) {
                             if (product.image_path) {
                                 try {
-                                    const filename = path.basename(product.image_path);
-                                    const fullPath = path.join(__dirname, '..', '..', 'data', 'media', filename);
-                                    if (fs.existsSync(fullPath)) {
-                                        const imgBuffer = fs.readFileSync(fullPath);
+                                    let imgBuffer = null;
+                                    let imageUrlForLog = product.image_path;
+
+                                    if (/^https?:\/\//i.test(product.image_path)) {
+                                        const imgRes = await axios.get(product.image_path, {
+                                            responseType: 'arraybuffer',
+                                            timeout: 10000,
+                                            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) WaBot/3.3' }
+                                        });
+                                        imgBuffer = Buffer.from(imgRes.data);
+                                    } else {
+                                        const filename = path.basename(product.image_path);
+                                        const fullPath = path.join(__dirname, '..', '..', 'data', 'media', filename);
+                                        if (fs.existsSync(fullPath)) {
+                                            imgBuffer = fs.readFileSync(fullPath);
+                                            imageUrlForLog = `/media/${filename}`;
+                                        }
+                                    }
+
+                                    if (imgBuffer) {
                                         await WhatsAppManager.sendImageMessage(customerPhone, imgBuffer, `📷 ${product.name} — $${product.price}`, storeId);
                                         sentImages.push({
-                                            url: `/media/${filename}`,
+                                            url: imageUrlForLog,
                                             productName: product.name,
                                             price: product.price,
                                             caption: `📷 ${product.name} — $${product.price}`
                                         });
                                         toolContent = `Foto del producto "${product.name}" enviada exitosamente por WhatsApp al cliente. Informale de forma amigable que ya se la enviaste.`;
                                     } else {
-                                        toolContent = `El producto "${product.name}" tiene registrada una imagen pero el archivo no existe en el servidor.`;
+                                        toolContent = `El producto "${product.name}" tiene registrada una imagen pero el archivo no está disponible en este momento.`;
                                     }
                                 } catch (err) {
                                     console.error("Error enviando foto por WhatsApp:", err.message);

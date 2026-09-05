@@ -77,6 +77,9 @@ CREATE TABLE IF NOT EXISTS products (
     category TEXT DEFAULT 'General',
     duration INTEGER DEFAULT 30,
     available INTEGER DEFAULT 1,
+    image_path TEXT,
+    sku TEXT DEFAULT '',
+    prices_json TEXT DEFAULT '[]',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE CASCADE

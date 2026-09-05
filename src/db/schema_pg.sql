@@ -88,6 +88,9 @@ CREATE TABLE IF NOT EXISTS products (
     duration INTEGER DEFAULT 30,
     is_service INTEGER DEFAULT 0,
     available INTEGER DEFAULT 1,
+    image_path TEXT,
+    sku TEXT DEFAULT '',
+    prices_json TEXT DEFAULT '[]',
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );

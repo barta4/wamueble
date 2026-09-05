@@ -77,7 +77,7 @@ router.get('/:id', requireAuth, (req, res) => {
 router.post('/', requireAuth, upload.single('image'), (req, res) => {
     try {
         const storeId = req.user.store_id;
-        const { name, description, price, category, duration, is_service } = req.body;
+        const { name, description, price, category, duration, is_service, sku, prices_json, image_url, available } = req.body;
 
         if (!name || price === undefined || price === null || isNaN(parseFloat(price))) {
             return res.status(400).json({ error: 'Nombre y precio son obligatorios' });
@@ -86,6 +86,9 @@ router.post('/', requireAuth, upload.single('image'), (req, res) => {
         let image_path = null;
         if (req.file) {
             image_path = `/media/${req.file.filename}`;
+        } else if (image_url && String(image_url).trim()) {
+            const GoogleSheetsService = require('../services/GoogleSheetsService');
+            image_path = GoogleSheetsService.normalizeImageUrl(String(image_url).trim());
         }
 
         const product = Product.create({
@@ -94,9 +97,12 @@ router.post('/', requireAuth, upload.single('image'), (req, res) => {
             description: description || '',
             price: parseFloat(price),
             category: category || 'General',
+            available: available !== undefined ? (available === true || available === 1 || available === '1' || available === 'true' ? 1 : 0) : 1,
             duration: duration ? parseInt(duration) : 30,
             is_service: is_service === true || is_service === 1 || is_service === 'true',
-            image_path
+            image_path,
+            sku: sku || '',
+            prices_json: prices_json || '[]'
         });
 
         res.status(201).json(product);
@@ -117,7 +123,7 @@ router.put('/:id', requireAuth, upload.single('image'), (req, res) => {
         if (!existing) return res.status(404).json({ error: 'Producto no encontrado' });
         if (existing.store_id !== storeId) return res.status(403).json({ error: 'Acceso denegado' });
 
-        const { name, description, price, category, duration, is_service } = req.body;
+        const { name, description, price, category, duration, is_service, sku, prices_json, image_url, available, remove_image } = req.body;
 
         if (!name || price === undefined || price === null || isNaN(parseFloat(price))) {
             return res.status(400).json({ error: 'Nombre y precio son obligatorios' });
@@ -126,6 +132,11 @@ router.put('/:id', requireAuth, upload.single('image'), (req, res) => {
         let image_path = undefined;
         if (req.file) {
             image_path = `/media/${req.file.filename}`;
+        } else if (remove_image === '1' || remove_image === true || (image_url !== undefined && String(image_url).trim() === '')) {
+            image_path = ''; // Borra la imagen si el usuario la quitó
+        } else if (image_url !== undefined && String(image_url).trim()) {
+            const GoogleSheetsService = require('../services/GoogleSheetsService');
+            image_path = GoogleSheetsService.normalizeImageUrl(String(image_url).trim());
         }
 
         const product = Product.update(req.params.id, storeId, {
@@ -133,9 +144,12 @@ router.put('/:id', requireAuth, upload.single('image'), (req, res) => {
             description: description || '',
             price: parseFloat(price),
             category: category || 'General',
+            available: available !== undefined ? (available === true || available === 1 || available === '1' || available === 'true' ? 1 : 0) : existing.available,
             duration: duration ? parseInt(duration) : 30,
             is_service: is_service !== undefined ? (is_service === true || is_service === 1 || is_service === 'true') : existing.is_service,
-            image_path
+            image_path,
+            sku: sku !== undefined ? sku : existing.sku,
+            prices_json: prices_json !== undefined ? prices_json : existing.prices_json
         });
 
         res.json(product);

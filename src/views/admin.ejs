@@ -22,7 +22,7 @@
                 <span class="burger-bar"></span>
             </button>
             
-            <div class="store-brand-badge">
+            <a href="/dashboard" class="store-brand-badge" title="Volver al Dashboard Principal">
                 <div class="store-avatar">
                     <img src="/images/logo.png" alt="Logo" class="logo-img-sm" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                     <span class="avatar-fallback" style="display: none;"><%= (store && store.name ? store.name.charAt(0) : 'W').toUpperCase() %></span>
@@ -41,10 +41,14 @@
                         <% } %>
                     </div>
                 </div>
-            </div>
+            </a>
         </div>
         
         <div class="header-right">
+            <a href="/dashboard" class="nav-link dashboard-badge-link" title="Ir al Dashboard Principal">
+                <span class="nav-icon">📊</span>
+                <span class="nav-text">Dashboard</span>
+            </a>
             <% if (user && user.role === 'superadmin') { %>
                 <a href="/superadmin" class="nav-link saas-badge-link" title="Panel SaaS Global">
                     <span class="nav-icon">👑</span>
@@ -66,6 +70,13 @@
     <main class="admin-main">
         <!-- Barra de Navegación Moderna de Fila Única con Dropdowns Desplegables -->
         <nav class="admin-modern-navbar" id="adminModernNav" aria-label="Navegación Principal">
+            <!-- 0. Acceso directo al Dashboard Principal -->
+            <a href="/dashboard" class="modern-nav-btn nav-dashboard-btn" title="Volver al Dashboard Principal">
+                <span class="btn-icon">📊</span>
+                <span class="btn-text">Dashboard</span>
+            </a>
+            <div class="nav-divider"></div>
+
             <!-- 1. Catálogo (Dropdown si tiene servicios/hostel, o directo si es solo productos) -->
             <% if ((store && store.clinic_mode === 1) || (store && store.hostel_mode === 1)) { %>
                 <div class="nav-dropdown" id="dropdownCatalog">
@@ -223,40 +234,23 @@
 
         <!-- Tab: Productos -->
         <section class="tab-content active" id="tab-products">
-            <div class="form-card">
-                <h3 id="formTitle-products">➕ Nuevo Producto</h3>
-                <form id="productForm" onsubmit="saveProduct(event, false)">
-                    <input type="hidden" id="productId" value="">
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label for="productName">Nombre</label>
-                            <input type="text" id="productName" placeholder="Pizza Muzzarella" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="productPrice">Precio ($)</label>
-                            <input type="number" id="productPrice" placeholder="350" step="0.01" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="productCategory">Categoría</label>
-                            <input type="text" id="productCategory" list="categoryOptions" placeholder="Ej: Pizzas, Bebidas..." required>
-                            <datalist id="categoryOptions"></datalist>
-                        </div>
-                        <div class="form-group full-width">
-                            <label for="productDescription">Descripción</label>
-                            <input type="text" id="productDescription" placeholder="Clásica con muzzarella y salsa de tomate">
-                        </div>
-                        <div class="form-group full-width">
-                            <label for="productImage">Imagen del Producto (para enviar por WhatsApp)</label>
-                            <input type="file" id="productImage" accept="image/*">
-                        </div>
-                    </div>
-                    <div class="form-actions">
-                        <button type="submit" class="btn-primary" id="submitBtn-products">Guardar</button>
-                        <button type="button" class="btn-secondary" onclick="resetForm(false)">Cancelar</button>
-                    </div>
-                </form>
+            <div class="catalog-toolbar">
+                <div class="catalog-search-wrap">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="productSearchInput" class="catalog-search-input" placeholder="Buscar por nombre, código o categoría..." oninput="filterCatalogItems(false)">
+                </div>
+                <div class="catalog-toolbar-actions">
+                    <select id="productCategoryFilter" class="catalog-cat-select" onchange="filterCatalogItems(false)">
+                        <option value="">Todas las categorías</option>
+                    </select>
+                    <button type="button" class="btn-primary btn-new-item" onclick="openNewProductModal(false)">
+                        <span>➕</span> Nuevo Producto
+                    </button>
+                </div>
             </div>
-            <div class="products-list" id="productsList">
+
+            <!-- Grid de Tarjetas Ficha de Producto -->
+            <div class="products-grid" id="productsList">
                 <div class="loading">Cargando productos...</div>
             </div>
         </section>
@@ -305,35 +299,20 @@
 
         <!-- Tab: Servicios (Modo Clínica) -->
         <section class="tab-content" id="tab-services">
-            <div class="form-card">
-                <h3 id="formTitle-services">➕ Nuevo Servicio</h3>
-                <form id="serviceForm" onsubmit="saveProduct(event, true)">
-                    <input type="hidden" id="serviceId" value="">
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label for="serviceName">Nombre del Servicio</label>
-                            <input type="text" id="serviceName" placeholder="Consulta General" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="servicePrice">Precio ($)</label>
-                            <input type="number" id="servicePrice" placeholder="1500" step="0.01" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="serviceDuration">Duración (minutos)</label>
-                            <input type="number" id="serviceDuration" placeholder="30" min="5" step="5" required>
-                        </div>
-                        <div class="form-group full-width">
-                            <label for="serviceDescription">Descripción</label>
-                            <input type="text" id="serviceDescription" placeholder="Evaluación primaria">
-                        </div>
-                    </div>
-                    <div class="form-actions">
-                        <button type="submit" class="btn-primary" id="submitBtn-services">Guardar</button>
-                        <button type="button" class="btn-secondary" onclick="resetForm(true)">Cancelar</button>
-                    </div>
-                </form>
+            <div class="catalog-toolbar">
+                <div class="catalog-search-wrap">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="serviceSearchInput" class="catalog-search-input" placeholder="Buscar servicio por nombre o duración..." oninput="filterCatalogItems(true)">
+                </div>
+                <div class="catalog-toolbar-actions">
+                    <button type="button" class="btn-primary btn-new-item" onclick="openNewProductModal(true)">
+                        <span>➕</span> Nuevo Servicio
+                    </button>
+                </div>
             </div>
-            <div class="products-list" id="servicesList">
+
+            <!-- Grid de Tarjetas Ficha de Servicio -->
+            <div class="products-grid" id="servicesList">
                 <div class="loading">Cargando servicios...</div>
             </div>
         </section>
@@ -1570,6 +1549,10 @@
             <!-- Accesos Globales -->
             <div class="drawer-group drawer-links">
                 <span class="drawer-group-title">ACCESOS RÁPIDOS</span>
+                <a href="/dashboard" class="drawer-link">
+                    <span>📊</span>
+                    <span>Dashboard Principal</span>
+                </a>
                 <a href="/pedidos" class="drawer-link">
                     <span>📺</span>
                     <span>Monitor de Pedidos TV</span>
@@ -1595,7 +1578,11 @@
 
     <!-- Mobile Bottom Navigation Bar (Acceso Rápido Ergonómico) -->
     <nav class="admin-bottom-nav" id="adminBottomNav" aria-label="Navegación Móvil Inferior">
-        <button type="button" class="b-nav-item active" data-module="catalog" onclick="switchModule('catalog')">
+        <a href="/dashboard" class="b-nav-item" title="Dashboard Principal">
+            <span class="b-nav-icon">📊</span>
+            <span class="b-nav-label">Dashboard</span>
+        </a>
+        <button type="button" class="b-nav-item active" data-tab="products" onclick="switchTab('products')">
             <span class="b-nav-icon">📦</span>
             <span class="b-nav-label">Catálogo</span>
         </button>
@@ -1608,7 +1595,7 @@
             <span class="b-nav-icon">👥</span>
             <span class="b-nav-label">Clientes</span>
         </button>
-        <button type="button" class="b-nav-item" data-module="settings" onclick="switchModule('settings')">
+        <button type="button" class="b-nav-item" data-tab="settings" onclick="switchTab('settings')">
             <span class="b-nav-icon">⚙️</span>
             <span class="b-nav-label">Ajustes</span>
         </button>
@@ -1617,6 +1604,193 @@
             <span class="b-nav-label">Menú</span>
         </button>
     </nav>
+
+    <!-- Modal Ficha de Producto / Servicio (Moderno con Vista, Edición, Multi-Precios y Fotos) -->
+    <div class="modal-overlay" id="productFichaModal" onclick="handleFichaBackdropClick(event)">
+        <div class="modal-card product-ficha-modal-card" role="dialog" aria-modal="true">
+            <div class="ficha-modal-header">
+                <div class="ficha-modal-title-group">
+                    <span class="ficha-modal-icon" id="fichaModalIcon">📦</span>
+                    <div>
+                        <h3 id="fichaModalTitle">Ficha del Producto</h3>
+                        <span class="ficha-modal-subtitle" id="fichaModalSubtitle">Información detallada, precios y configuración para el Asistente IA</span>
+                    </div>
+                </div>
+                <button type="button" class="modal-close-btn" onclick="closeProductFichaModal()" aria-label="Cerrar modal">✕</button>
+            </div>
+
+            <!-- Selector de Pestañas: Ver Ficha vs Editar Ficha -->
+            <div class="ficha-nav-tabs">
+                <button type="button" class="ficha-tab-pill active" id="fichaTabBtnView" onclick="switchFichaMode('view')">
+                    <span>👁️</span> Ver Ficha
+                </button>
+                <button type="button" class="ficha-tab-pill" id="fichaTabBtnEdit" onclick="switchFichaMode('edit')">
+                    <span>✏️</span> Editar Ficha & Precios
+                </button>
+            </div>
+
+            <!-- 1. MODO VISTA: FICHA TÉCNICA DETALLADA -->
+            <div class="ficha-body-view" id="fichaBodyView">
+                <div class="ficha-view-grid">
+                    <!-- Columna Izquierda: Imagen y Estado -->
+                    <div class="ficha-view-media-col">
+                        <div class="ficha-view-img-wrapper">
+                            <img id="fichaViewImg" src="" alt="Foto" style="display: none;">
+                            <div id="fichaViewImgFallback" class="ficha-view-fallback">📦</div>
+                        </div>
+                        <div class="ficha-view-badges">
+                            <span class="ficha-code-badge" id="fichaViewSku">#PRD-000</span>
+                            <span class="ficha-status-badge" id="fichaViewStatusBadge">● ACTIVO</span>
+                        </div>
+                    </div>
+
+                    <!-- Columna Derecha: Datos, Precios y Descripción -->
+                    <div class="ficha-view-details-col">
+                        <h2 class="ficha-view-name" id="fichaViewName">Nombre del Producto</h2>
+                        <div class="ficha-view-meta">
+                            <span class="ficha-meta-item" id="fichaViewCategory">🏷️ General</span>
+                            <span class="ficha-meta-item" id="fichaViewDuration" style="display: none;">⏱️ 30 min</span>
+                        </div>
+
+                        <!-- Precios: Base + Variantes -->
+                        <div class="ficha-view-pricing-box">
+                            <div class="ficha-price-primary">
+                                <span class="price-label">Precio Principal:</span>
+                                <span class="price-amount" id="fichaViewPrice">$0.00</span>
+                            </div>
+                            <div id="fichaViewVariantsContainer" class="ficha-variants-list" style="display: none;">
+                                <span class="variants-heading">Precios Adicionales / Variantes:</span>
+                                <div class="variants-chips" id="fichaViewVariantsChips"></div>
+                            </div>
+                        </div>
+
+                        <!-- Descripción -->
+                        <div class="ficha-view-desc-box">
+                            <label class="desc-label">📝 Descripción e Información para el Cliente:</label>
+                            <p class="desc-text" id="fichaViewDesc">Sin descripción registrada.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Preview del Asistente IA / WhatsApp -->
+                <div class="ficha-bot-preview-box">
+                    <div class="bot-preview-title">
+                        <span>💬</span> Cómo lo presentará el Asistente IA por WhatsApp:
+                    </div>
+                    <div class="bot-preview-bubble" id="fichaBotPreviewText">
+                        • Producto — $0.00 [TIENE FOTO DISPONIBLE]
+                    </div>
+                </div>
+
+                <!-- Botones de Acción Vista -->
+                <div class="ficha-modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeProductFichaModal()">Cerrar</button>
+                    <button type="button" class="btn-primary" onclick="switchFichaMode('edit')">
+                        <span>✏️</span> Editar esta Ficha
+                    </button>
+                </div>
+            </div>
+
+            <!-- 2. MODO EDICIÓN: FORMULARIO MODERNO -->
+            <form class="ficha-body-edit" id="fichaEditForm" onsubmit="saveProductFromModal(event)" style="display: none;">
+                <input type="hidden" id="modalProductId" value="">
+                <input type="hidden" id="modalIsService" value="0">
+
+                <div class="ficha-form-scrollable">
+                    <div class="ficha-form-grid">
+                        <!-- Nombre -->
+                        <div class="form-group full-width">
+                            <label for="modalProductName">Nombre *</label>
+                            <input type="text" id="modalProductName" class="form-control" placeholder="Ej: Pizza Muzzarella o Consulta General" required>
+                        </div>
+
+                        <!-- Código / SKU -->
+                        <div class="form-group">
+                            <label for="modalProductSku">Código / SKU (Opcional)</label>
+                            <input type="text" id="modalProductSku" class="form-control" placeholder="Ej: PRD-001 / SRV-01">
+                        </div>
+
+                        <!-- Categoría -->
+                        <div class="form-group" id="modalCategoryGroup">
+                            <label for="modalProductCategory">Categoría *</label>
+                            <input type="text" id="modalProductCategory" list="categoryOptionsModal" class="form-control" placeholder="Ej: Pizzas, Bebidas...">
+                            <datalist id="categoryOptionsModal"></datalist>
+                        </div>
+
+                        <!-- Duración (Solo Servicios) -->
+                        <div class="form-group" id="modalDurationGroup" style="display: none;">
+                            <label for="modalProductDuration">Duración en minutos (Clínica)</label>
+                            <input type="number" id="modalProductDuration" class="form-control" placeholder="30" min="5" step="5">
+                        </div>
+
+                        <!-- Estado Disponibilidad -->
+                        <div class="form-group full-width">
+                            <label class="checkbox-label" style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                                <input type="checkbox" id="modalProductAvailable" checked style="width: 18px; height: 18px;">
+                                <span><strong>Habilitado y Activo</strong> (disponible para venta y consultas del bot)</span>
+                            </label>
+                        </div>
+
+                        <!-- Descripción -->
+                        <div class="form-group full-width">
+                            <label for="modalProductDescription">Descripción y Detalles para el Asistente IA</label>
+                            <textarea id="modalProductDescription" class="form-control" rows="3" placeholder="Ingredientes, detalles, opciones de presentación, notas..."></textarea>
+                        </div>
+
+                        <!-- Precios: Base + Variantes -->
+                        <div class="form-group full-width">
+                            <div class="pricing-header-row">
+                                <label for="modalProductPrice" style="margin: 0; font-weight: 700;">Precio Principal / Base ($) *</label>
+                            </div>
+                            <input type="number" id="modalProductPrice" class="form-control" placeholder="0.00" step="0.01" required>
+
+                            <!-- Constructor de Precios Adicionales / Variantes -->
+                            <div class="multi-prices-manager">
+                                <div class="multi-prices-header">
+                                    <span>Precios Adicionales / Variantes (Opcional)</span>
+                                    <button type="button" class="btn-xs-add" onclick="addPriceVariantRow()">
+                                        <span>➕</span> Agregar Precio
+                                    </button>
+                                </div>
+                                <p class="multi-prices-sub">Definí precios diferenciados (ej: Chico, Grande, Por Kilo, Mayorista, Promo).</p>
+                                <div id="modalVariantRowsContainer" class="variant-rows-container"></div>
+                            </div>
+                        </div>
+
+                        <!-- Imagen Dual (Archivo o URL) -->
+                        <div class="form-group full-width" id="modalImageGroup">
+                            <label style="font-weight: 700;">Imagen (para enviar por WhatsApp y catálogo web)</label>
+                            <div class="image-uploader-dual">
+                                <div class="uploader-option">
+                                    <label for="modalImageFile" class="file-drop-label">
+                                        <span>📁 Subir desde este equipo</span>
+                                        <input type="file" id="modalImageFile" accept="image/*" onchange="handleModalFileChange(event)">
+                                    </label>
+                                </div>
+                                <div class="uploader-divider">o</div>
+                                <div class="uploader-option url-option">
+                                    <input type="url" id="modalImageUrl" class="form-control" placeholder="Pegar URL web o enlace de Google Drive..." oninput="handleModalUrlInput(this.value)">
+                                </div>
+                            </div>
+                            <!-- Preview de Imagen -->
+                            <div class="image-preview-card" id="modalImagePreviewBox" style="display: none;">
+                                <img id="modalImagePreviewThumb" src="" alt="Previsualización">
+                                <div class="preview-meta">
+                                    <span id="modalImagePreviewName">imagen.jpg</span>
+                                    <button type="button" class="btn-text-danger" onclick="clearModalImage()">Quitar imagen</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ficha-modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeProductFichaModal()">Cancelar</button>
+                    <button type="submit" class="btn-primary" id="btnSaveModalProduct">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>

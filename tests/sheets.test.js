@@ -213,5 +213,127 @@ describe('Google Sheets Connector Service', () => {
 
             spyFetch.mockRestore();
         });
+
+        test('Debe sincronizar imágenes y SKU, y preservar la imagen existente si la celda está vacía', async () => {
+            // 1. Sincronizar producto con imagen de Google Drive y SKU
+            const spyFetch = jest.spyOn(GoogleSheetsService, 'fetchSheetData').mockResolvedValue({
+                spreadsheetId: 'test_sheet_img',
+                gid: '0',
+                headers: ['Nombre', 'Precio', 'Foto', 'Codigo'],
+                rows: [
+                    { 
+                        Nombre: 'Hamburguesa Triple', 
+                        Precio: '550', 
+                        Foto: 'https://drive.google.com/file/d/1A2B3C4D5E6F/view?usp=sharing',
+                        Codigo: 'HMB-003'
+                    }
+                ],
+                totalRows: 1
+            });
+
+            const result = await GoogleSheetsService.syncProducts(testStore.id, {
+                sheetUrl: 'https://docs.google.com/spreadsheets/d/test_sheet_img/edit',
+                columnMapping: { 
+                    name: 'Nombre', 
+                    price: 'Precio',
+                    image: 'Foto',
+                    sku: 'Codigo'
+                },
+                syncMode: 'upsert'
+            });
+
+            expect(result.success).toBe(true);
+            const products = Product.getByStoreId(testStore.id);
+            const burger = products.find(p => p.name === 'Hamburguesa Triple');
+            expect(burger).toBeDefined();
+            expect(burger.sku).toBe('HMB-003');
+            // La URL de Google Drive debe estar normalizada a uc?export=view
+            expect(burger.image_path).toBe('https://drive.google.com/uc?export=view&id=1A2B3C4D5E6F');
+
+            // 2. Segunda sincronización donde la celda de Foto viene vacía (no debe borrar la imagen)
+            spyFetch.mockResolvedValueOnce({
+                spreadsheetId: 'test_sheet_img',
+                gid: '0',
+                headers: ['Nombre', 'Precio', 'Foto', 'Codigo'],
+                rows: [
+                    { 
+                        Nombre: 'Hamburguesa Triple', 
+                        Precio: '590', 
+                        Foto: '', // Vacío
+                        Codigo: 'HMB-003'
+                    }
+                ],
+                totalRows: 1
+            });
+
+            const result2 = await GoogleSheetsService.syncProducts(testStore.id, {
+                sheetUrl: 'https://docs.google.com/spreadsheets/d/test_sheet_img/edit',
+                columnMapping: { 
+                    name: 'Nombre', 
+                    price: 'Precio',
+                    image: 'Foto',
+                    sku: 'Codigo'
+                },
+                syncMode: 'upsert'
+            });
+
+            expect(result2.success).toBe(true);
+            const burgerAfter = Product.getById(burger.id);
+            expect(burgerAfter.price).toBe(590);
+            // La imagen debe preservarse intacta
+            expect(burgerAfter.image_path).toBe('https://drive.google.com/uc?export=view&id=1A2B3C4D5E6F');
+
+            spyFetch.mockRestore();
+        });
+    });
+
+    describe('5. Normalizador de URLs de Imágenes y Auto-Mapping de Media/SKU', () => {
+        test('Debe convertir enlaces compartidos de Google Drive a enlaces de visualización directa', () => {
+            const driveShare = 'https://drive.google.com/file/d/1A2B3C4D5E6F7G8H/view?usp=sharing';
+            const normalized = GoogleSheetsService.normalizeImageUrl(driveShare);
+            expect(normalized).toBe('https://drive.google.com/uc?export=view&id=1A2B3C4D5E6F7G8H');
+        });
+
+        test('Debe mantener URLs normales de imagen intactas', () => {
+            const webUrl = 'https://example.com/images/pizza.jpg';
+            expect(GoogleSheetsService.normalizeImageUrl(webUrl)).toBe(webUrl);
+        });
+
+        test('Debe auto-detectar columnas de imagen y SKU', () => {
+            const headers = ['articulo', 'precio', 'imagen', 'sku'];
+            const mapping = GoogleSheetsService.autoDetectMapping(headers);
+            expect(mapping.name).toBe('articulo');
+            expect(mapping.price).toBe('precio');
+            expect(mapping.image).toBe('imagen');
+            expect(mapping.sku).toBe('sku');
+        });
+    });
+
+    describe('6. Modelo Product: SKU, Multi-Precios y Catálogo para IA', () => {
+        test('Debe guardar y actualizar SKU y prices_json en Product', () => {
+            const product = Product.create({
+                storeId: testStore.id,
+                name: 'Pizza Napolitana',
+                price: 450,
+                sku: 'PIZ-NAP-01',
+                prices_json: [
+                    { label: 'Chica (4 porciones)', price: 320 },
+                    { label: 'Grande (8 porciones)', price: 450 },
+                    { label: 'Familiar (12 porciones)', price: 620 }
+                ]
+            });
+
+            expect(product.id).toBeDefined();
+            expect(product.sku).toBe('PIZ-NAP-01');
+            const parsedPrices = JSON.parse(product.prices_json);
+            expect(parsedPrices.length).toBe(3);
+            expect(parsedPrices[0].label).toBe('Chica (4 porciones)');
+
+            // Verificar catálogo de IA generado
+            const catalogText = Product.getCatalogText(testStore.id);
+            expect(catalogText).toContain('Pizza Napolitana');
+            expect(catalogText).toContain('[Cód: PIZ-NAP-01]');
+            expect(catalogText).toContain('Chica (4 porciones): $320');
+        });
     });
 });

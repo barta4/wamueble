@@ -37,6 +37,14 @@ document.addEventListener('DOMContentLoaded', () => {
     loadHostelMode();
     initSockets();
     checkActiveHandoffs();
+
+    // Soporte para navegar directamente por hash URL (ej: /admin#whatsapp)
+    if (window.location.hash) {
+        const hashTab = window.location.hash.replace('#tab-', '').replace('#', '');
+        if (document.getElementById(`tab-${hashTab}`)) {
+            switchTab(hashTab);
+        }
+    }
 });
 
 async function loadCategories() {
@@ -198,6 +206,15 @@ function switchTabAndCloseDrawer(tab) {
 }
 
 /**
+ * Conmutar módulos principales (usado en vistas compactas / móviles).
+ */
+function switchModule(module) {
+    if (module === 'catalog') switchTab('products');
+    else if (module === 'settings') switchTab('settings');
+    else switchTab(module);
+}
+
+/**
  * Abrir el Drawer Lateral Móvil.
  */
 function openAdminDrawer() {
@@ -286,86 +303,612 @@ function updateHandoffBadges(show) {
 /**
  * Cargar lista de productos.
  */
+// ─── Variables de Catálogo & Fichas ────────────────────────────
+let rawProductsCache = [];
+let rawServicesCache = [];
+let currentActiveFichaItem = null;
+window._removeCurrentImage = false;
+
+/**
+ * Cargar catálogo completo de productos y servicios.
+ */
 async function loadProducts() {
     const productsContainer = document.getElementById('productsList');
     const servicesContainer = document.getElementById('servicesList');
     
     try {
         const res = await fetch('/api/products');
-        if (!res.ok) throw new Error('Error al cargar');
+        if (!res.ok) throw new Error('Error al cargar catálogo');
         const allItems = await res.json();
 
-        const products = allItems.filter(p => !p.is_service);
-        const services = allItems.filter(p => p.is_service);
+        rawProductsCache = allItems.filter(p => !p.is_service);
+        rawServicesCache = allItems.filter(p => p.is_service);
 
-        const renderItem = (p, isService) => `
-            <div class="product-row ${p.available ? '' : 'unavailable'}" id="${isService ? 'service' : 'product'}-${p.id}">
-                <div class="product-info">
-                    <div class="product-name">${p.image_path ? '🖼️ ' : ''}${escapeHtml(p.name)}</div>
-                    <div class="product-desc">${escapeHtml(p.description || '')}</div>
-                </div>
-                <span class="product-category">${isService ? `⏱️ ${p.duration || 30} min` : escapeHtml(p.category || 'General')}</span>
-                <span class="product-price">$${p.price}</span>
-                <div class="product-actions">
-                    <button class="btn-icon ${p.available ? 'toggle-on' : 'toggle-off'}" 
-                            onclick="toggleProduct(${p.id})" title="${p.available ? 'Pausar' : 'Activar'}">
-                        ${p.available ? '✅' : '⏸'}
-                    </button>
-                    <button class="btn-icon" onclick="editProduct(${p.id}, ${isService})" title="Editar">✏️</button>
-                    <button class="btn-icon delete" onclick="deleteProduct(${p.id})" title="Eliminar">🗑</button>
-                </div>
-            </div>
-        `;
+        // Actualizar select de categorías en el toolbar
+        updateCatalogCategoryFilter();
 
-        if (productsContainer) {
-            if (products.length === 0) {
-                productsContainer.innerHTML = '<div class="loading">No hay productos. ¡Agregá el primero!</div>';
-            } else {
-                productsContainer.innerHTML = products.map(p => renderItem(p, false)).join('');
-            }
-        }
-        
-        if (servicesContainer) {
-            if (services.length === 0) {
-                servicesContainer.innerHTML = '<div class="loading">No hay servicios. ¡Agregá el primero!</div>';
-            } else {
-                servicesContainer.innerHTML = services.map(p => renderItem(p, true)).join('');
-            }
-        }
+        // Renderizar ambas vistas
+        filterCatalogItems(false);
+        filterCatalogItems(true);
     } catch (error) {
-        if (productsContainer) productsContainer.innerHTML = '<div class="loading">Error al cargar</div>';
-        if (servicesContainer) servicesContainer.innerHTML = '<div class="loading">Error al cargar</div>';
-        console.error(error);
+        if (productsContainer) productsContainer.innerHTML = '<div class="loading">Error al cargar productos</div>';
+        if (servicesContainer) servicesContainer.innerHTML = '<div class="loading">Error al cargar servicios</div>';
+        console.error("Error en loadProducts:", error);
     }
 }
 
 /**
- * Guardar producto (crear o editar).
+ * Actualizar las opciones del filtro de categorías según los productos existentes.
  */
-async function saveProduct(event, isService = false) {
+function updateCatalogCategoryFilter() {
+    const catSelect = document.getElementById('productCategoryFilter');
+    if (!catSelect) return;
+
+    const currentVal = catSelect.value;
+    const categories = new Set();
+    rawProductsCache.forEach(p => {
+        if (p.category && p.category.trim()) categories.add(p.category.trim());
+    });
+
+    const sortedCats = Array.from(categories).sort();
+    catSelect.innerHTML = '<option value="">Todas las categorías</option>' + 
+        sortedCats.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+
+    if (categories.has(currentVal)) {
+        catSelect.value = currentVal;
+    }
+}
+
+/**
+ * Renderizar una tarjeta Ficha moderna (Producto o Servicio).
+ */
+function renderProductCard(p, isService = false) {
+    let variants = [];
+    try {
+        if (p.prices_json) {
+            variants = typeof p.prices_json === 'string' ? JSON.parse(p.prices_json) : p.prices_json;
+        }
+    } catch (e) {
+        variants = [];
+    }
+
+    const skuDisplay = p.sku ? `#${escapeHtml(p.sku)}` : `#${p.id}`;
+    const avatarContent = p.image_path
+        ? `<img src="${p.image_path}" alt="${escapeHtml(p.name)}" onerror="this.onerror=null; this.parentElement.innerHTML='${isService ? '🛠️' : '📦'}';">`
+        : (isService ? '🛠️' : '📦');
+
+    // Chips de precios adicionales / variantes
+    let variantChipsHtml = '';
+    if (Array.isArray(variants) && variants.length > 0) {
+        const previewVariants = variants.slice(0, 2);
+        variantChipsHtml = previewVariants.map(v => 
+            `<span class="product-card-variant-chip">${escapeHtml(v.label)}: $${Number(v.price).toFixed(2)}</span>`
+        ).join('');
+        if (variants.length > 2) {
+            variantChipsHtml += `<span class="product-card-variant-chip">+${variants.length - 2} más</span>`;
+        }
+    }
+
+    return `
+        <div class="product-card ${p.available ? '' : 'unavailable'}" id="${isService ? 'service' : 'product'}-${p.id}">
+            <!-- Header de Tarjeta -->
+            <div class="product-card-header">
+                <div class="product-card-avatar" onclick="openProductFicha(${p.id})" style="cursor: pointer;" title="Ver ficha">
+                    ${avatarContent}
+                </div>
+                <div class="product-card-title-col">
+                    <h4 class="product-card-name" onclick="openProductFicha(${p.id})" style="cursor: pointer;" title="${escapeHtml(p.name)}">
+                        ${escapeHtml(p.name)}
+                    </h4>
+                    <span class="product-card-sku">${skuDisplay}</span>
+                </div>
+                <span class="product-card-status ${p.available ? 'active' : 'inactive'}" 
+                      onclick="event.stopPropagation(); toggleProduct(${p.id})" 
+                      title="Click para cambiar disponibilidad">
+                    ● ${p.available ? 'ACTIVO' : 'PAUSADO'}
+                </span>
+            </div>
+
+            <!-- Cuerpo de Tarjeta -->
+            <div class="product-card-body">
+                <div class="product-card-desc">${escapeHtml(p.description || '')}</div>
+                <div class="product-card-price-row">
+                    <span class="product-card-price-main">$${Number(p.price).toFixed(2)}</span>
+                    ${variantChipsHtml}
+                </div>
+                <div class="product-card-meta-row">
+                    <span class="product-card-category-tag">
+                        ${isService ? `⏱️ ${p.duration || 30} min` : `🏷️ ${escapeHtml(p.category || 'General')}`}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Acciones Ficha: 3 Botones -->
+            <div class="product-card-actions">
+                <button type="button" class="btn-card-action" onclick="openProductFicha(${p.id})">
+                    <span>👁️</span> VER FICHA
+                </button>
+                <button type="button" class="btn-card-action" onclick="openEditProductModal(${p.id}, ${isService ? 'true' : 'false'})">
+                    <span>✏️</span> EDITAR
+                </button>
+                <button type="button" class="btn-card-action btn-card-delete" onclick="deleteProduct(${p.id})">
+                    <span>🗑</span> ELIMINAR
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Filtrar catálogo en tiempo real por búsqueda y categoría.
+ */
+function filterCatalogItems(isService = false) {
+    if (isService) {
+        const container = document.getElementById('servicesList');
+        if (!container) return;
+        const searchInput = document.getElementById('serviceSearchInput');
+        const q = searchInput ? searchInput.value.toLowerCase().trim() : '';
+
+        const filtered = rawServicesCache.filter(s => {
+            if (!q) return true;
+            return (s.name && s.name.toLowerCase().includes(q)) ||
+                   (s.sku && s.sku.toLowerCase().includes(q)) ||
+                   (s.description && s.description.toLowerCase().includes(q)) ||
+                   (String(s.duration || '').includes(q));
+        });
+
+        if (filtered.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state" style="grid-column: 1 / -1;">
+                    <div class="empty-icon">🛠️</div>
+                    <p>${q ? 'No se encontraron servicios' : 'No hay servicios registrados'}</p>
+                    <span>${q ? 'Probá con otro término de búsqueda' : '¡Hacé clic en "+ Nuevo Servicio" para crear uno!'}</span>
+                </div>
+            `;
+        } else {
+            container.innerHTML = filtered.map(s => renderProductCard(s, true)).join('');
+        }
+    } else {
+        const container = document.getElementById('productsList');
+        if (!container) return;
+        const searchInput = document.getElementById('productSearchInput');
+        const catSelect = document.getElementById('productCategoryFilter');
+        const q = searchInput ? searchInput.value.toLowerCase().trim() : '';
+        const cat = catSelect ? catSelect.value.trim() : '';
+
+        const filtered = rawProductsCache.filter(p => {
+            const matchesCategory = !cat || (p.category && p.category.trim() === cat);
+            if (!matchesCategory) return false;
+            if (!q) return true;
+            return (p.name && p.name.toLowerCase().includes(q)) ||
+                   (p.sku && p.sku.toLowerCase().includes(q)) ||
+                   (p.description && p.description.toLowerCase().includes(q)) ||
+                   (p.category && p.category.toLowerCase().includes(q));
+        });
+
+        if (filtered.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state" style="grid-column: 1 / -1;">
+                    <div class="empty-icon">📦</div>
+                    <p>${(q || cat) ? 'No se encontraron productos' : 'No hay productos registrados'}</p>
+                    <span>${(q || cat) ? 'Probá con otra categoría o término de búsqueda' : '¡Hacé clic en "+ Nuevo Producto" para crear uno!'}</span>
+                </div>
+            `;
+        } else {
+            container.innerHTML = filtered.map(p => renderProductCard(p, false)).join('');
+        }
+    }
+}
+
+/**
+ * Buscar un ítem en los caches locales por ID.
+ */
+function findItemById(id) {
+    const numId = Number(id);
+    return rawProductsCache.find(p => p.id === numId) || rawServicesCache.find(s => s.id === numId);
+}
+
+// ─── Modal Ficha: Apertura, Vista y Edición ────────────────────
+
+/**
+ * Abrir la Ficha Técnica del Producto/Servicio en MODO VISTA.
+ */
+async function openProductFicha(id) {
+    let item = findItemById(id);
+    if (!item) {
+        try {
+            const res = await fetch(`/api/products/${id}`);
+            if (res.ok) item = await res.json();
+        } catch (e) {
+            console.error(e);
+        }
+    }
+    if (!item) {
+        showToast('❌ No se encontró la ficha del ítem', 'error');
+        return;
+    }
+
+    currentActiveFichaItem = item;
+    const isService = !!item.is_service;
+
+    // Configuración de Cabecera Modal
+    document.getElementById('fichaModalIcon').textContent = isService ? '🛠️' : '📦';
+    document.getElementById('fichaModalTitle').textContent = isService ? 'Ficha del Servicio' : 'Ficha del Producto';
+    document.getElementById('fichaModalSubtitle').textContent = 'Información técnica, precios y sincronización con el Asistente IA';
+
+    // Rellenar Datos Modo Vista
+    document.getElementById('fichaViewName').textContent = item.name;
+    document.getElementById('fichaViewSku').textContent = item.sku ? `#${item.sku}` : `#${item.id}`;
+    
+    const statusBadge = document.getElementById('fichaViewStatusBadge');
+    statusBadge.textContent = item.available ? '● ACTIVO' : '● PAUSADO';
+    statusBadge.className = 'ficha-status-badge ' + (item.available ? 'active' : 'inactive');
+
+    document.getElementById('fichaViewCategory').textContent = '🏷️ ' + (item.category || 'General');
+    const durEl = document.getElementById('fichaViewDuration');
+    if (isService) {
+        durEl.style.display = 'inline-block';
+        durEl.textContent = `⏱️ ${item.duration || 30} min`;
+    } else {
+        durEl.style.display = 'none';
+    }
+
+    document.getElementById('fichaViewPrice').textContent = `$${Number(item.price).toFixed(2)}`;
+    document.getElementById('fichaViewDesc').textContent = item.description || 'Sin descripción registrada.';
+
+    // Imagen en Vista
+    const imgEl = document.getElementById('fichaViewImg');
+    const fallbackEl = document.getElementById('fichaViewImgFallback');
+    if (item.image_path) {
+        imgEl.src = item.image_path;
+        imgEl.style.display = 'block';
+        fallbackEl.style.display = 'none';
+    } else {
+        imgEl.style.display = 'none';
+        fallbackEl.style.display = 'flex';
+        fallbackEl.textContent = isService ? '🛠️' : '📦';
+    }
+
+    // Variantes / Precios Múltiples
+    let variants = [];
+    try {
+        if (item.prices_json) {
+            variants = typeof item.prices_json === 'string' ? JSON.parse(item.prices_json) : item.prices_json;
+        }
+    } catch (e) {
+        variants = [];
+    }
+
+    const variantsBox = document.getElementById('fichaViewVariantsContainer');
+    const variantsChips = document.getElementById('fichaViewVariantsChips');
+    if (Array.isArray(variants) && variants.length > 0) {
+        variantsBox.style.display = 'flex';
+        variantsChips.innerHTML = variants.map(v => 
+            `<span class="variant-chip">${escapeHtml(v.label)}: <strong>$${Number(v.price).toFixed(2)}</strong></span>`
+        ).join('');
+    } else {
+        variantsBox.style.display = 'none';
+        variantsChips.innerHTML = '';
+    }
+
+    // Previsualización de Mensaje WhatsApp
+    let botMsg = `• *${item.name}*`;
+    if (item.sku) botMsg += ` (Cód: ${item.sku})`;
+    botMsg += ` — $${Number(item.price).toFixed(2)}`;
+    if (Array.isArray(variants) && variants.length > 0) {
+        botMsg += `\n  Variantes: ` + variants.map(v => `${v.label}: $${v.price}`).join(' | ');
+    }
+    if (item.description) {
+        botMsg += `\n  _${item.description}_`;
+    }
+    if (item.image_path) {
+        botMsg += `\n  📷 [El bot enviará la imagen del producto]`;
+    }
+    document.getElementById('fichaBotPreviewText').textContent = botMsg;
+
+    // Cambiar a pestaña vista y abrir modal
+    switchFichaMode('view');
+    document.getElementById('productFichaModal').classList.add('active');
+}
+
+/**
+ * Abrir el modal directamente en MODO EDICIÓN para un producto existente.
+ */
+async function openEditProductModal(id, isService = false) {
+    let item = findItemById(id);
+    if (!item) {
+        try {
+            const res = await fetch(`/api/products/${id}`);
+            if (res.ok) item = await res.json();
+        } catch (e) {
+            console.error(e);
+        }
+    }
+    if (!item) {
+        showToast('❌ No se encontró el ítem', 'error');
+        return;
+    }
+
+    currentActiveFichaItem = item;
+    window._removeCurrentImage = false;
+
+    // Llenar formulario de edición
+    document.getElementById('modalProductId').value = item.id;
+    document.getElementById('modalIsService').value = isService ? '1' : '0';
+    document.getElementById('modalProductName').value = item.name || '';
+    document.getElementById('modalProductSku').value = item.sku || '';
+    document.getElementById('modalProductCategory').value = item.category || '';
+    document.getElementById('modalProductDuration').value = item.duration || 30;
+    document.getElementById('modalProductAvailable').checked = item.available !== undefined ? !!item.available : true;
+    document.getElementById('modalProductPrice').value = item.price;
+    document.getElementById('modalProductDescription').value = item.description || '';
+
+    // Visibilidad según sea servicio o producto
+    document.getElementById('modalCategoryGroup').style.display = isService ? 'none' : 'block';
+    document.getElementById('modalDurationGroup').style.display = isService ? 'block' : 'none';
+
+    // Configurar encabezado y botón
+    document.getElementById('fichaModalIcon').textContent = isService ? '🛠️' : '📦';
+    document.getElementById('fichaModalTitle').textContent = isService ? 'Editar Servicio' : 'Editar Producto';
+    document.getElementById('btnSaveModalProduct').textContent = 'Guardar Cambios';
+
+    // Cargar variantes / multi-precios
+    const rowsContainer = document.getElementById('modalVariantRowsContainer');
+    rowsContainer.innerHTML = '';
+    let variants = [];
+    try {
+        if (item.prices_json) {
+            variants = typeof item.prices_json === 'string' ? JSON.parse(item.prices_json) : item.prices_json;
+        }
+    } catch (e) {
+        variants = [];
+    }
+    if (Array.isArray(variants)) {
+        variants.forEach(v => addPriceVariantRow(v.label, v.price));
+    }
+
+    // Limpiar inputs de imagen y mostrar preview si ya tiene
+    document.getElementById('modalImageFile').value = '';
+    document.getElementById('modalImageUrl').value = '';
+    const previewBox = document.getElementById('modalImagePreviewBox');
+    const previewThumb = document.getElementById('modalImagePreviewThumb');
+    const previewName = document.getElementById('modalImagePreviewName');
+
+    if (item.image_path) {
+        previewBox.style.display = 'flex';
+        previewThumb.src = item.image_path;
+        previewName.textContent = item.image_path.split('/').pop();
+    } else {
+        previewBox.style.display = 'none';
+    }
+
+    // Cambiar a pestaña edición y abrir modal
+    switchFichaMode('edit');
+    document.getElementById('productFichaModal').classList.add('active');
+}
+
+/**
+ * Abrir el modal para CREAR un NUEVO Producto o Servicio.
+ */
+function openNewProductModal(isService = false) {
+    currentActiveFichaItem = null;
+    window._removeCurrentImage = false;
+
+    // Resetear valores de formulario
+    document.getElementById('modalProductId').value = '';
+    document.getElementById('modalIsService').value = isService ? '1' : '0';
+    document.getElementById('modalProductName').value = '';
+    document.getElementById('modalProductSku').value = '';
+    document.getElementById('modalProductCategory').value = isService ? '' : 'General';
+    document.getElementById('modalProductDuration').value = 30;
+    document.getElementById('modalProductAvailable').checked = true;
+    document.getElementById('modalProductPrice').value = '';
+    document.getElementById('modalProductDescription').value = '';
+
+    // Visibilidad según tipo
+    document.getElementById('modalCategoryGroup').style.display = isService ? 'none' : 'block';
+    document.getElementById('modalDurationGroup').style.display = isService ? 'block' : 'none';
+
+    // Variantes
+    document.getElementById('modalVariantRowsContainer').innerHTML = '';
+
+    // Imagen
+    document.getElementById('modalImageFile').value = '';
+    document.getElementById('modalImageUrl').value = '';
+    document.getElementById('modalImagePreviewBox').style.display = 'none';
+
+    // Cabecera y Botón
+    document.getElementById('fichaModalIcon').textContent = isService ? '🛠️' : '📦';
+    document.getElementById('fichaModalTitle').textContent = isService ? 'Nuevo Servicio' : 'Nuevo Producto';
+    document.getElementById('fichaModalSubtitle').textContent = 'Completá los datos para agregarlo al catálogo y al Asistente IA';
+    document.getElementById('btnSaveModalProduct').textContent = isService ? 'Crear Servicio' : 'Crear Producto';
+
+    // Conmutar a modo edición
+    switchFichaMode('edit');
+    document.getElementById('productFichaModal').classList.add('active');
+}
+
+/**
+ * Cerrar el modal de ficha.
+ */
+function closeProductFichaModal() {
+    const modal = document.getElementById('productFichaModal');
+    if (modal) modal.classList.remove('active');
+    currentActiveFichaItem = null;
+    window._removeCurrentImage = false;
+}
+
+/**
+ * Clic en el telón de fondo para cerrar.
+ */
+function handleFichaBackdropClick(event) {
+    if (event.target && event.target.id === 'productFichaModal') {
+        closeProductFichaModal();
+    }
+}
+
+/**
+ * Cambiar entre Pestaña "Ver Ficha" y Pestaña "Editar Ficha".
+ */
+function switchFichaMode(mode) {
+    const viewSection = document.getElementById('fichaBodyView');
+    const editSection = document.getElementById('fichaEditForm');
+    const btnView = document.getElementById('fichaTabBtnView');
+    const btnEdit = document.getElementById('fichaTabBtnEdit');
+
+    if (mode === 'view') {
+        if (!currentActiveFichaItem) {
+            switchFichaMode('edit');
+            return;
+        }
+        viewSection.style.display = 'flex';
+        editSection.style.display = 'none';
+        btnView.classList.add('active');
+        btnEdit.classList.remove('active');
+    } else {
+        if (currentActiveFichaItem && document.getElementById('modalProductId').value !== String(currentActiveFichaItem.id)) {
+            openEditProductModal(currentActiveFichaItem.id, !!currentActiveFichaItem.is_service);
+        }
+        viewSection.style.display = 'none';
+        editSection.style.display = 'flex';
+        btnView.classList.remove('active');
+        btnEdit.classList.add('active');
+    }
+}
+
+/**
+ * Agregar fila de variante / precio adicional.
+ */
+function addPriceVariantRow(label = '', price = '') {
+    const container = document.getElementById('modalVariantRowsContainer');
+    if (!container) return;
+
+    const row = document.createElement('div');
+    row.className = 'variant-price-row';
+    row.innerHTML = `
+        <input type="text" class="form-control variant-input-label" placeholder="Nombre (ej: Grande, Kilo, Mayorista)" value="${escapeHtml(label)}">
+        <input type="number" step="0.01" class="form-control variant-input-price" placeholder="Precio ($)" value="${price !== '' ? price : ''}">
+        <button type="button" class="btn-remove-variant" onclick="removePriceVariantRow(this)" title="Quitar este precio">✕</button>
+    `;
+    container.appendChild(row);
+}
+
+/**
+ * Eliminar fila de variante.
+ */
+function removePriceVariantRow(btn) {
+    const row = btn.closest('.variant-price-row');
+    if (row) row.remove();
+}
+
+/**
+ * Manejador para carga de archivo de imagen desde disco.
+ */
+function handleModalFileChange(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    window._removeCurrentImage = false;
+    document.getElementById('modalImageUrl').value = '';
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        document.getElementById('modalImagePreviewThumb').src = e.target.result;
+        document.getElementById('modalImagePreviewName').textContent = file.name;
+        document.getElementById('modalImagePreviewBox').style.display = 'flex';
+    };
+    reader.readAsDataURL(file);
+}
+
+/**
+ * Manejador para pegar URL de imagen o Google Drive.
+ */
+function handleModalUrlInput(val) {
+    const trimmed = (val || '').trim();
+    if (!trimmed) return;
+
+    window._removeCurrentImage = false;
+    document.getElementById('modalImageFile').value = '';
+
+    document.getElementById('modalImagePreviewThumb').src = trimmed;
+    document.getElementById('modalImagePreviewName').textContent = 'URL web vinculada';
+    document.getElementById('modalImagePreviewBox').style.display = 'flex';
+}
+
+/**
+ * Quitar la imagen del producto.
+ */
+function clearModalImage() {
+    document.getElementById('modalImageFile').value = '';
+    document.getElementById('modalImageUrl').value = '';
+    document.getElementById('modalImagePreviewThumb').src = '';
+    document.getElementById('modalImagePreviewBox').style.display = 'none';
+    window._removeCurrentImage = true;
+}
+
+/**
+ * Guardar Cambios o Crear Producto/Servicio desde el Modal de Ficha.
+ */
+async function saveProductFromModal(event) {
     event.preventDefault();
 
-    const prefix = isService ? 'service' : 'product';
+    const saveBtn = document.getElementById('btnSaveModalProduct');
+    const origText = saveBtn.textContent;
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Guardando...';
+
+    const id = document.getElementById('modalProductId').value;
+    const isService = document.getElementById('modalIsService').value === '1';
+    const name = document.getElementById('modalProductName').value.trim();
+    const sku = document.getElementById('modalProductSku').value.trim();
+    const category = document.getElementById('modalProductCategory').value.trim();
+    const duration = document.getElementById('modalProductDuration').value;
+    const available = document.getElementById('modalProductAvailable').checked ? 1 : 0;
+    const price = parseFloat(document.getElementById('modalProductPrice').value);
+    const description = document.getElementById('modalProductDescription').value.trim();
+
+    // Recolectar variantes de precios
+    const variantRows = document.querySelectorAll('#modalVariantRowsContainer .variant-price-row');
+    const variants = [];
+    variantRows.forEach(row => {
+        const vLabel = row.querySelector('.variant-input-label')?.value.trim();
+        const vPrice = parseFloat(row.querySelector('.variant-input-price')?.value);
+        if (vLabel && !isNaN(vPrice)) {
+            variants.push({ label: vLabel, price: vPrice });
+        }
+    });
+
     const formData = new FormData();
-    formData.append('name', document.getElementById(`${prefix}Name`).value);
-    formData.append('description', document.getElementById(`${prefix}Description`).value);
-    formData.append('price', parseFloat(document.getElementById(`${prefix}Price`).value));
+    formData.append('name', name);
+    formData.append('price', price);
+    formData.append('sku', sku);
+    formData.append('available', available);
+    formData.append('description', description);
     formData.append('is_service', isService);
+    formData.append('prices_json', JSON.stringify(variants));
 
     if (isService) {
-        formData.append('duration', parseInt(document.getElementById(`${prefix}Duration`).value));
+        formData.append('duration', parseInt(duration) || 30);
     } else {
-        formData.append('category', document.getElementById(`${prefix}Category`).value);
-        const fileInput = document.getElementById('productImage');
-        if (fileInput && fileInput.files[0]) {
-            formData.append('image', fileInput.files[0]);
-        }
+        formData.append('category', category || 'General');
+    }
+
+    // Adjuntar archivo o url o flag de borrado
+    const fileInput = document.getElementById('modalImageFile');
+    const urlInput = document.getElementById('modalImageUrl');
+
+    if (fileInput.files && fileInput.files[0]) {
+        formData.append('image', fileInput.files[0]);
+    } else if (urlInput.value && urlInput.value.trim()) {
+        formData.append('image_url', urlInput.value.trim());
+    } else if (window._removeCurrentImage) {
+        formData.append('remove_image', '1');
     }
 
     try {
         let res;
-        if (editingProductId) {
-            res = await fetch(`/api/products/${editingProductId}`, {
+        if (id) {
+            res = await fetch(`/api/products/${id}`, {
                 method: 'PUT',
                 body: formData
             });
@@ -376,55 +919,32 @@ async function saveProduct(event, isService = false) {
             });
         }
 
-        if (!res.ok) throw new Error('Error al guardar');
-
-        const itemName = isService ? 'Servicio' : 'Producto';
-        showToast(editingProductId ? `✅ ${itemName} actualizado` : `✅ ${itemName} creado`, 'success');
-        resetForm(isService);
-        loadProducts();
-    } catch (error) {
-        showToast('❌ Error al guardar', 'error');
-        console.error(error);
-    }
-}
-
-/**
- * Editar producto existente (cargar datos en el formulario).
- */
-async function editProduct(id, isService = false) {
-    try {
-        const res = await fetch(`/api/products/${id}`);
-        const product = await res.json();
-        
-        const prefix = isService ? 'service' : 'product';
-
-        document.getElementById(`${prefix}Id`).value = product.id;
-        document.getElementById(`${prefix}Name`).value = product.name;
-        document.getElementById(`${prefix}Description`).value = product.description || '';
-        document.getElementById(`${prefix}Price`).value = product.price;
-        
-        if (isService) {
-            document.getElementById(`${prefix}Duration`).value = product.duration || 30;
-            document.getElementById(`formTitle-services`).textContent = '✏️ Editar Servicio';
-            document.getElementById(`submitBtn-services`).textContent = 'Actualizar';
-        } else {
-            document.getElementById(`${prefix}Category`).value = product.category || 'General';
-            document.getElementById(`formTitle-products`).textContent = '✏️ Editar Producto';
-            document.getElementById(`submitBtn-products`).textContent = 'Actualizar';
+        if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.error || 'Error al guardar');
         }
 
-        editingProductId = id;
-
-        // Scroll al formulario
-        document.querySelector(isService ? '#tab-services .form-card' : '#tab-products .form-card').scrollIntoView({ behavior: 'smooth' });
+        const savedItem = await res.json();
+        showToast(`✅ ${isService ? 'Servicio' : 'Producto'} guardado correctamente`, 'success');
+        
+        closeProductFichaModal();
+        await loadProducts();
+        
+        // Si estábamos editando, abrir la ficha actualizada
+        if (savedItem && savedItem.id) {
+            openProductFicha(savedItem.id);
+        }
     } catch (error) {
-        showToast('❌ Error al cargar', 'error');
-        console.error(error);
+        showToast(`❌ Error: ${error.message}`, 'error');
+        console.error("Error saving product from modal:", error);
+    } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = origText;
     }
 }
 
 /**
- * Toggle disponibilidad de producto.
+ * Toggle disponibilidad de producto directamente desde la tarjeta.
  */
 async function toggleProduct(id) {
     try {
@@ -432,7 +952,7 @@ async function toggleProduct(id) {
         if (!res.ok) throw new Error('Error al cambiar estado');
 
         const product = await res.json();
-        showToast(product.available ? '✅ Producto activado' : '⏸ Producto pausado', 'info');
+        showToast(product.available ? '✅ Activado' : '⏸ Pausado', 'info');
         loadProducts();
     } catch (error) {
         showToast('❌ Error al cambiar estado', 'error');
@@ -441,16 +961,19 @@ async function toggleProduct(id) {
 }
 
 /**
- * Eliminar producto.
+ * Eliminar producto o servicio.
  */
 async function deleteProduct(id) {
-    if (!confirm('¿Eliminar este producto?')) return;
+    if (!confirm('¿Estás seguro de eliminar este ítem del catálogo?')) return;
 
     try {
         const res = await fetch(`/api/products/${id}`, { method: 'DELETE' });
         if (!res.ok) throw new Error('Error al eliminar');
 
-        showToast('🗑 Producto eliminado', 'info');
+        showToast('🗑 Eliminado correctamente', 'info');
+        if (currentActiveFichaItem && currentActiveFichaItem.id === Number(id)) {
+            closeProductFichaModal();
+        }
         loadProducts();
     } catch (error) {
         showToast('❌ Error al eliminar', 'error');
@@ -458,23 +981,17 @@ async function deleteProduct(id) {
     }
 }
 
-/**
- * Resetear formulario.
- */
+// ─── Compatibilidad con funciones legadas ────────────────────
+function editProduct(id, isService = false) {
+    openEditProductModal(id, isService);
+}
+
 function resetForm(isService = false) {
-    const prefix = isService ? 'service' : 'product';
-    document.getElementById(`${prefix}Form`).reset();
-    document.getElementById(`${prefix}Id`).value = '';
-    
-    if (isService) {
-        document.getElementById('formTitle-services').textContent = '➕ Nuevo Servicio';
-        document.getElementById('submitBtn-services').textContent = 'Guardar';
-    } else {
-        document.getElementById('formTitle-products').textContent = '➕ Nuevo Producto';
-        document.getElementById('submitBtn-products').textContent = 'Guardar';
-    }
-    
-    editingProductId = null;
+    openNewProductModal(isService);
+}
+
+async function saveProduct(event, isService = false) {
+    saveProductFromModal(event);
 }
 
 // ─── Repartidores CRUD ──────────────────────────
