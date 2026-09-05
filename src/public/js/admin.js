@@ -174,9 +174,11 @@ function switchTab(tab) {
     if (main) {
         if (tab === 'chats') {
             main.classList.add('chat-mode');
+            document.body.classList.add('chat-active-body');
             if (bottomNav) bottomNav.style.display = 'none';
         } else {
             main.classList.remove('chat-mode');
+            document.body.classList.remove('chat-active-body');
             if (bottomNav) bottomNav.style.display = '';
         }
     }
@@ -824,8 +826,17 @@ function handleModalFileChange(event) {
  * Manejador para pegar URL de imagen o Google Drive.
  */
 function handleModalUrlInput(val) {
-    const trimmed = (val || '').trim();
+    let trimmed = (val || '').trim();
     if (!trimmed) return;
+
+    if (trimmed.includes('drive.google.com') || trimmed.includes('docs.google.com')) {
+        const fileMatch = trimmed.match(/\/file\/d\/([a-zA-Z0-9_-]+)/i) || trimmed.match(/[?&]id=([a-zA-Z0-9_-]+)/i);
+        if (fileMatch) {
+            trimmed = `https://drive.google.com/thumbnail?id=${fileMatch[1]}&sz=w1000`;
+        }
+    } else if (trimmed.includes('dropbox.com') && trimmed.includes('dl=0')) {
+        trimmed = trimmed.replace('dl=0', 'dl=1');
+    }
 
     window._removeCurrentImage = false;
     document.getElementById('modalImageFile').value = '';
@@ -1463,23 +1474,26 @@ async function openChat(phone, displayName = '') {
 
         const messagesHtml = data.messages.map(m => {
             const isNote = m.role === 'note';
-            const isMe = !isNote && (m.role === 'ai' || m.role === 'assistant');
-            const isOperator = !isNote && (m.operator || m.role === 'human');
+            const isClient = !isNote && (m.role === 'human' || m.role === 'user' || m.role === 'client');
+            const isOperator = !isNote && !isClient && (Boolean(m.operator) || m.role === 'operator');
+            const isMe = !isNote && !isClient && !isOperator;
             const bubbleClass = isNote ? 'private-note' : (isOperator ? 'operator' : (isMe ? 'me' : 'client'));
             
-            let operatorTag = '';
+            let senderTag = '';
             if (isNote) {
-                operatorTag = `<span class="operator-tag" style="background:#fbbf24; color:#000; padding:2px 6px; border-radius:4px; font-size:0.75rem; font-weight:600; display:inline-block; margin-bottom:4px; user-select:none;">📌 Nota Privada (${m.operator || 'Admin'})</span>`;
+                senderTag = `<span class="sender-tag-badge" style="background:#fbbf24; color:#000;">📌 Nota Privada (${escapeHtml(m.operator || 'Admin')})</span>`;
             } else if (isOperator) {
-                operatorTag = '<span class="operator-tag" style="margin-right:4px;">👤 Operador</span>';
+                senderTag = `<span class="sender-tag-badge operator">👤 ${escapeHtml(m.operator || 'Operador')}</span>`;
+            } else if (isMe) {
+                senderTag = `<span class="sender-tag-badge ai">🤖 Asistente IA</span>`;
             }
             
+            const processedText = window.ChatProInstance ? window.ChatProInstance.processMessageContent(m.content) : escapeHtml(m.content);
+
             return `
                 <div class="chat-bubble ${bubbleClass}">
-                    <div class="bubble-text">
-                        ${operatorTag ? `<div>${operatorTag}</div>` : ''}
-                        ${escapeHtml(m.content)}
-                    </div>
+                    ${senderTag ? `<div>${senderTag}</div>` : ''}
+                    <div class="bubble-text" data-processed="1">${processedText}</div>
                     <div class="bubble-meta">
                         <span class="bubble-time">${m.timestamp ? new Date(m.timestamp).toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
                     </div>
@@ -1560,7 +1574,7 @@ async function openChat(phone, displayName = '') {
                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
                             </button>
                             <button type="button" class="btn-chat-action btn-record" id="btnRecordAudio" onclick="triggerMediaUpload('audio')" title="Grabar nota de voz">
-                                <svg id="recordIcon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+                                <svg id="recordIcon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" y2="22"/></svg>
                                 <span id="recordTimer" class="record-timer" style="display:none;">00:00</span>
                             </button>
                             <button type="button" class="btn-chat-action" onclick="insertStoreSignature()" title="Insertar firma comercial">
@@ -1576,6 +1590,13 @@ async function openChat(phone, displayName = '') {
         `;
 
         scrollToBottom();
+        // Ergonomía Chatwoot: enfocar automáticamente el input de texto sin scroll
+        setTimeout(() => {
+            const input = document.getElementById('chatInput');
+            if (input) {
+                input.focus();
+            }
+        }, 50);
     } catch (error) {
         windowContainer.innerHTML = `<div class="loading">Error al abrir conversación: ${error.message}</div>`;
         console.error(error);
@@ -1590,19 +1611,34 @@ function appendMessage(message) {
     const emptyPlaceholder = container.querySelector('.loading');
     if (emptyPlaceholder) emptyPlaceholder.remove();
 
-    const isMe = message.role === 'ai' || message.role === 'assistant';
-    const isOperator = message.operator || message.role === 'human';
-    const bubbleClass = isOperator ? 'operator' : (isMe ? 'me' : 'client');
+    const isNote = message.role === 'note';
+    const isClient = !isNote && (message.role === 'human' || message.role === 'user' || message.role === 'client');
+    const isOperator = !isNote && !isClient && (Boolean(message.operator) || message.role === 'operator');
+    const isMe = !isNote && !isClient && !isOperator;
+    const bubbleClass = isNote ? 'private-note' : (isOperator ? 'operator' : (isMe ? 'me' : 'client'));
     
+    let senderTag = '';
+    if (isNote) {
+        senderTag = `<span class="sender-tag-badge" style="background:#fbbf24; color:#000;">📌 Nota Privada (${escapeHtml(message.operator || 'Admin')})</span>`;
+    } else if (isOperator) {
+        senderTag = `<span class="sender-tag-badge operator">👤 ${escapeHtml(message.operator || 'Operador')}</span>`;
+    } else if (isMe) {
+        senderTag = `<span class="sender-tag-badge ai">🤖 Asistente IA</span>`;
+    }
+
+    const processedText = window.ChatProInstance ? window.ChatProInstance.processMessageContent(message.content) : escapeHtml(message.content);
+
     const div = document.createElement('div');
     div.className = `chat-bubble ${bubbleClass}`;
     div.innerHTML = `
-        <div class="bubble-text">${escapeHtml(message.content)}</div>
+        ${senderTag ? `<div>${senderTag}</div>` : ''}
+        <div class="bubble-text" data-processed="1">${processedText}</div>
         <div class="bubble-meta">
             <span class="bubble-time">${message.timestamp ? new Date(message.timestamp).toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit' }) : new Date().toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit' })}</span>
         </div>
     `;
     container.appendChild(div);
+    scrollToBottom();
 }
 
 async function sendManualMessage(event, phone) {

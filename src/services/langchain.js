@@ -33,11 +33,19 @@ class LangChainService {
      * 
      * @param {string} message - Texto del cliente
      * @param {number} storeId - ID del local
+     * @param {number} storeId - ID del local
      * @param {string} customerPhone - Teléfono del cliente
+     * @param {Object} options - Opciones adicionales ({ isSimulation: boolean })
      * @returns {Object} { response: string, order: Object|null, appointment: Object|null, booking: Object|null }
      */
-    async processMessage(message, storeId, customerPhone) {
+    async processMessage(message, storeId, customerPhone, options = {}) {
         const startTime = Date.now();
+        const isSimulation = options.isSimulation === true ||
+            !customerPhone ||
+            String(customerPhone).startsWith('+59899000') ||
+            String(customerPhone).startsWith('59899000') ||
+            String(customerPhone).startsWith('sim_') ||
+            String(customerPhone) === 'simulator';
 
         // Obtener tienda/local y cliente
         const store = Store.getById(storeId);
@@ -224,55 +232,143 @@ class LangChainService {
                             name: toolCall.name
                         }));
                     } else if (toolCall.name === 'enviar_foto_producto') {
-                        console.log(`🖼️ Intentando enviar foto del producto: ${toolCall.args.productName} a ${customerPhone}`);
+                        console.log(`🖼️ Intentando procesar foto del producto: "${toolCall.args.productName}" para ${customerPhone || 'Simulador'}`);
                         const fs = require('fs');
                         const path = require('path');
-                        const WhatsAppManager = require('./whatsapp');
                         const products = Product.getByStoreId(storeId, true);
-                        const searchName = (toolCall.args.productName || '').toLowerCase().trim();
-                        const product = products.find(p => p.name.toLowerCase().includes(searchName) || searchName.includes(p.name.toLowerCase()));
+                        const rawSearch = (toolCall.args.productName || '').toLowerCase().trim();
+                        const cleanSearch = rawSearch
+                            .replace(/^(foto\s+de\s+|foto\s+|imagen\s+de\s+|imagen\s+|el\s+|la\s+|los\s+|las\s+|un\s+|una\s+)/i, '')
+                            .trim();
+
+                        // Buscar coincidencia: priorizar producto que tenga foto cargada
+                        let product = products.find(p => p.image_path && (
+                            p.name.toLowerCase().includes(cleanSearch || rawSearch) || 
+                            (cleanSearch && cleanSearch.includes(p.name.toLowerCase()))
+                        ));
                         
+                        if (!product) {
+                            product = products.find(p => 
+                                p.name.toLowerCase().includes(cleanSearch || rawSearch) || 
+                                (cleanSearch && cleanSearch.includes(p.name.toLowerCase()))
+                            );
+                        }
+
                         let toolContent = `No encontré el producto "${toolCall.args.productName}" en el catálogo.`;
                         if (product) {
                             if (product.image_path) {
-                                try {
-                                    let imgBuffer = null;
-                                    let imageUrlForLog = product.image_path;
+                                let imgBuffer = null;
+                                let imageUrlForLog = product.image_path;
 
+                                // 1. Resolver recurso de imagen (URL externa o archivo local)
+                                try {
                                     if (/^https?:\/\//i.test(product.image_path)) {
-                                        const imgRes = await axios.get(product.image_path, {
-                                            responseType: 'arraybuffer',
-                                            timeout: 10000,
-                                            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) WaBot/3.3' }
-                                        });
-                                        imgBuffer = Buffer.from(imgRes.data);
+                                        let fetchUrl = product.image_path;
+                                        // Si es Google Drive, convertir a CDN thumbnail de alta disponibilidad
+                                        if (fetchUrl.includes('drive.google.com') || fetchUrl.includes('docs.google.com')) {
+                                            const fileMatch = fetchUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/i) || fetchUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/i);
+                                            if (fileMatch) {
+                                                fetchUrl = `https://drive.google.com/thumbnail?id=${fileMatch[1]}&sz=w1000`;
+                                                imageUrlForLog = fetchUrl;
+                                            }
+                                        } else if (fetchUrl.includes('dropbox.com') && fetchUrl.includes('dl=0')) {
+                                            fetchUrl = fetchUrl.replace('dl=0', 'dl=1');
+                                            imageUrlForLog = fetchUrl;
+                                        }
+
+                                        try {
+                                            const imgRes = await axios.get(fetchUrl, {
+                                                responseType: 'arraybuffer',
+                                                timeout: 8000,
+                                                headers: {
+                                                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                                                    'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
+                                                },
+                                                maxRedirects: 5
+                                            });
+                                            if (imgRes.data && imgRes.data.length > 0) {
+                                                imgBuffer = Buffer.from(imgRes.data);
+                                            }
+                                        } catch (fetchErr) {
+                                            console.warn(`⚠️ [Foto Producto] No se pudo descargar buffer de ${fetchUrl}:`, fetchErr.message);
+                                        }
                                     } else {
-                                        const filename = path.basename(product.image_path);
-                                        const fullPath = path.join(__dirname, '..', '..', 'data', 'media', filename);
-                                        if (fs.existsSync(fullPath)) {
-                                            imgBuffer = fs.readFileSync(fullPath);
-                                            imageUrlForLog = `/media/${filename}`;
+                                        const cleanPath = product.image_path.replace(/^\//, '');
+                                        const candidatePaths = [
+                                            path.join(__dirname, '..', '..', 'data', 'media', path.basename(product.image_path)),
+                                            path.join(__dirname, '..', '..', 'data', cleanPath),
+                                            path.join(__dirname, '..', 'public', cleanPath),
+                                            path.join(__dirname, '..', '..', cleanPath)
+                                        ];
+
+                                        for (const cand of candidatePaths) {
+                                            if (fs.existsSync(cand) && fs.statSync(cand).isFile()) {
+                                                imgBuffer = fs.readFileSync(cand);
+                                                imageUrlForLog = product.image_path.startsWith('/') ? product.image_path : `/${product.image_path}`;
+                                                break;
+                                            }
                                         }
                                     }
+                                } catch (resolveErr) {
+                                    console.warn(`⚠️ [Foto Producto] Error resolviendo imagen:`, resolveErr.message);
+                                }
 
-                                    if (imgBuffer) {
-                                        await WhatsAppManager.sendImageMessage(customerPhone, imgBuffer, `📷 ${product.name} — $${product.price}`, storeId);
+                                // 2. Despachar según entorno
+                                if (isSimulation) {
+                                    // MODO SIMULADOR: registrar siempre para la UI interactiva sin interactuar con WhatsApp
+                                    sentImages.push({
+                                        url: imageUrlForLog,
+                                        productName: product.name,
+                                        price: product.price,
+                                        caption: `📷 ${product.name} — $${product.price}`
+                                    });
+                                    toolContent = `Foto del producto "${product.name}" mostrada con éxito en pantalla al cliente. Dile con amabilidad y entusiasmo que aquí tiene la foto, descríbele brevemente el producto ($${product.price}) y pregúntale si desea agregarlo a su pedido.`;
+                                    console.log(`✅ [Simulador] Foto de "${product.name}" cargada para visualización web.`);
+                                } else {
+                                    // MODO WHATSAPP REAL
+                                    let WhatsAppManager = null;
+                                    try {
+                                        WhatsAppManager = require('./whatsapp');
+                                    } catch (waReqErr) {
+                                        console.warn('⚠️ WhatsAppManager no disponible en este entorno:', waReqErr.message);
+                                    }
+                                    const provider = WhatsAppManager ? (storeId ? WhatsAppManager.getPrimaryProviderForStore(storeId) : WhatsAppManager.provider) : null;
+                                    const isConnected = provider && ((provider.sock && provider.sock.user) || provider.accessToken);
+
+                                    if (isConnected && imgBuffer) {
+                                        try {
+                                            await WhatsAppManager.sendImageMessage(customerPhone, imgBuffer, `📷 ${product.name} — $${product.price}`, storeId);
+                                            sentImages.push({
+                                                url: imageUrlForLog,
+                                                productName: product.name,
+                                                price: product.price,
+                                                caption: `📷 ${product.name} — $${product.price}`
+                                            });
+                                            toolContent = `Foto del producto "${product.name}" enviada exitosamente por WhatsApp al cliente. Informale de forma amigable que ya se la enviaste y dale los detalles.`;
+                                            console.log(`✅ [WhatsApp] Foto de "${product.name}" despachada exitosamente.`);
+                                        } catch (sendErr) {
+                                            console.error(`❌ [WhatsApp] Error enviando imagen a ${customerPhone}:`, sendErr.message);
+                                            sentImages.push({
+                                                url: imageUrlForLog,
+                                                productName: product.name,
+                                                price: product.price,
+                                                caption: `📷 ${product.name} — $${product.price}`
+                                            });
+                                            toolContent = `La foto de "${product.name}" está registrada en el sistema. Descríbele detalladamente el producto al cliente (${product.name}, $${product.price}) con calidez.`;
+                                        }
+                                    } else {
                                         sentImages.push({
                                             url: imageUrlForLog,
                                             productName: product.name,
                                             price: product.price,
                                             caption: `📷 ${product.name} — $${product.price}`
                                         });
-                                        toolContent = `Foto del producto "${product.name}" enviada exitosamente por WhatsApp al cliente. Informale de forma amigable que ya se la enviaste.`;
-                                    } else {
-                                        toolContent = `El producto "${product.name}" tiene registrada una imagen pero el archivo no está disponible en este momento.`;
+                                        toolContent = `Foto de "${product.name}" registrada. Describe amablemente las características y precio ($${product.price}) al cliente.`;
+                                        console.warn(`⚠️ [WhatsApp] Socket no disponible para enviar foto a ${customerPhone}`);
                                     }
-                                } catch (err) {
-                                    console.error("Error enviando foto por WhatsApp:", err.message);
-                                    toolContent = `Error al enviar la foto por WhatsApp: ${err.message}`;
                                 }
                             } else {
-                                toolContent = `El producto "${product.name}" no tiene foto disponible cargada en el sistema.`;
+                                toolContent = `El producto "${product.name}" no tiene foto disponible cargada en el sistema. Descríbelo al cliente amablemente.`;
                             }
                         }
 

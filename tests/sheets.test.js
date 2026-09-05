@@ -247,8 +247,8 @@ describe('Google Sheets Connector Service', () => {
             const burger = products.find(p => p.name === 'Hamburguesa Triple');
             expect(burger).toBeDefined();
             expect(burger.sku).toBe('HMB-003');
-            // La URL de Google Drive debe estar normalizada a uc?export=view
-            expect(burger.image_path).toBe('https://drive.google.com/uc?export=view&id=1A2B3C4D5E6F');
+            // La URL de Google Drive debe estar normalizada a thumbnail CDN
+            expect(burger.image_path).toBe('https://drive.google.com/thumbnail?id=1A2B3C4D5E6F&sz=w1000');
 
             // 2. Segunda sincronización donde la celda de Foto viene vacía (no debe borrar la imagen)
             spyFetch.mockResolvedValueOnce({
@@ -281,7 +281,7 @@ describe('Google Sheets Connector Service', () => {
             const burgerAfter = Product.getById(burger.id);
             expect(burgerAfter.price).toBe(590);
             // La imagen debe preservarse intacta
-            expect(burgerAfter.image_path).toBe('https://drive.google.com/uc?export=view&id=1A2B3C4D5E6F');
+            expect(burgerAfter.image_path).toBe('https://drive.google.com/thumbnail?id=1A2B3C4D5E6F&sz=w1000');
 
             spyFetch.mockRestore();
         });
@@ -291,7 +291,7 @@ describe('Google Sheets Connector Service', () => {
         test('Debe convertir enlaces compartidos de Google Drive a enlaces de visualización directa', () => {
             const driveShare = 'https://drive.google.com/file/d/1A2B3C4D5E6F7G8H/view?usp=sharing';
             const normalized = GoogleSheetsService.normalizeImageUrl(driveShare);
-            expect(normalized).toBe('https://drive.google.com/uc?export=view&id=1A2B3C4D5E6F7G8H');
+            expect(normalized).toBe('https://drive.google.com/thumbnail?id=1A2B3C4D5E6F7G8H&sz=w1000');
         });
 
         test('Debe mantener URLs normales de imagen intactas', () => {

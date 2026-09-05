@@ -6,6 +6,7 @@
 class ChatPro {
     constructor() {
         this.currentFilter = 'all'; // all, favorites, archived
+        this.chatwootTab = 'all'; // all, mine, unassigned
         this.searchQuery = '';
         this.activePhone = null;
         this.chatData = [];
@@ -82,6 +83,18 @@ class ChatPro {
         }
     }
 
+    setChatwootTab(tab) {
+        this.chatwootTab = tab;
+        document.querySelectorAll('#chatwootFilterTabs .cw-tab-btn').forEach(btn => {
+            if (btn.dataset.tab === tab) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+        this.renderSidebar();
+    }
+
     async loadChatsData() {
         const container = document.getElementById('chatList');
         if (!container) return;
@@ -91,6 +104,21 @@ class ChatPro {
             if (!res.ok) throw new Error('Error al cargar chats');
             this.chatData = await res.json();
             window._chatData = this.chatData; // Expose to global scope if needed
+
+            // Actualizar contadores de las pestañas Chatwoot
+            const totalCount = this.chatData.length;
+            const mineCount = this.chatData.filter(c => c.needs_human === 1).length;
+            const unassignedCount = this.chatData.filter(c => !c.needs_human).length;
+
+            const bAll = document.getElementById('cwBadgeAll');
+            const bMine = document.getElementById('cwBadgeMine');
+            const bUnassigned = document.getElementById('cwBadgeUnassigned');
+            if (bAll) bAll.textContent = totalCount;
+            if (bMine) bMine.textContent = mineCount;
+            if (bUnassigned) bUnassigned.textContent = unassignedCount;
+
+            const navAll = document.getElementById('navBadgeAll');
+            if (navAll) navAll.textContent = totalCount;
         } catch (error) {
             console.error(error);
             container.innerHTML = '<div class="loading">Error al cargar chats</div>';
@@ -102,6 +130,13 @@ class ChatPro {
         if (!container) return;
 
         let filtered = this.chatData;
+
+        // Filtro por pestañas Chatwoot (Mías, Sin Asignar, Todos)
+        if (this.chatwootTab === 'mine') {
+            filtered = filtered.filter(c => c.needs_human === 1);
+        } else if (this.chatwootTab === 'unassigned') {
+            filtered = filtered.filter(c => !c.needs_human);
+        }
         
         if (this.searchQuery) {
             filtered = filtered.filter(c => {
@@ -112,7 +147,7 @@ class ChatPro {
         }
 
         if (filtered.length === 0) {
-            container.innerHTML = '<div class="loading" style="margin-top:20px;">No hay conversaciones.</div>';
+            container.innerHTML = '<div class="loading" style="margin-top:20px;">No hay conversaciones en esta bandeja.</div>';
             return;
         }
 
@@ -143,6 +178,15 @@ class ChatPro {
             if (c.is_archived) indicators += '<span class="chat-indicator archived" title="Archivado">📥</span>';
             if (c.needs_human) indicators += '<span class="badge-human-needs" style="margin-left:4px;">Atención</span>';
 
+            let previewText = c.last_message || 'Sin mensajes';
+            let msgIcon = '';
+            if (previewText.toLowerCase().includes('audio') || previewText.includes('.mp3') || previewText.includes('.ogg')) {
+                previewText = 'Mensaje de audio';
+                msgIcon = '🎤 ';
+            } else if (previewText && previewText !== 'Sin mensajes') {
+                msgIcon = '↩ ';
+            }
+
             div.innerHTML = `
                 <div class="chat-avatar ${c.is_blocked ? 'blocked' : ''}">${initials}</div>
                 <div class="chat-item-content">
@@ -151,7 +195,10 @@ class ChatPro {
                         <span class="chat-item-time">${timeStr}</span>
                     </div>
                     <div class="chat-item-body">
-                        <span class="chat-item-msg">${window.escapeHtml(c.last_message || 'Sin mensajes')}</span>
+                        <span class="chat-item-msg">
+                            <span class="chat-channel-badge">WA</span>
+                            <span class="chat-direction-arrow">${msgIcon}</span>${window.escapeHtml(previewText)}
+                        </span>
                         <div class="chat-item-indicators">${indicators}</div>
                     </div>
                 </div>
@@ -173,17 +220,15 @@ class ChatPro {
             this.renderInfoPanel(phone);
         }
         
-        // Reprocesar mensajes existentes para renderizar media
         setTimeout(() => {
             const container = document.getElementById('chatMessages');
             if (!container) return;
             
-            // Buscar burbujas y procesarlas (esto es un hack porque original openChat las renderiza directo)
-            // Lo ideal sería que openChat use appendMessagePro
-            // Haremos un reemplazo simple aquí
+            // Re-procesar burbujas para media y eventos JSON
             Array.from(container.querySelectorAll('.chat-bubble')).forEach(bubble => {
                 const textDiv = bubble.querySelector('.bubble-text');
-                if (textDiv) {
+                if (textDiv && !textDiv.dataset.processed) {
+                    textDiv.dataset.processed = '1';
                     const originalText = textDiv.textContent;
                     const enhancedHtml = this.processMessageContent(originalText);
                     if (enhancedHtml !== window.escapeHtml(originalText)) {
@@ -195,7 +240,14 @@ class ChatPro {
             // Añadir separadores de fecha
             this.addDateSeparators(container);
             
-            window.scrollToBottom();
+            // Scroll interno del contenedor de mensajes
+            container.scrollTop = container.scrollHeight;
+
+            // Foco directo en el input para poder escribir inmediatamente sin scroll
+            const input = document.getElementById('chatInput');
+            if (input) {
+                input.focus();
+            }
         }, 50);
     }
 
@@ -207,10 +259,7 @@ class ChatPro {
             const timeSpan = bubble.querySelector('.bubble-time');
             if (!timeSpan) return;
             
-            // Tratamos de inferir la fecha (simplificado, asume hoy si solo hay HH:MM)
-            const timeText = timeSpan.textContent;
             let dateStr = 'Hoy';
-            
             if (dateStr !== lastDate) {
                 const separator = document.createElement('div');
                 separator.className = 'chat-date-separator';
@@ -229,8 +278,9 @@ class ChatPro {
         if (emptyPlaceholder) emptyPlaceholder.remove();
 
         const isNote = message.role === 'note';
-        const isMe = !isNote && (message.role === 'ai' || message.role === 'assistant');
-        const isOperator = !isNote && (message.operator || message.role === 'human');
+        const isClient = !isNote && (message.role === 'human' || message.role === 'user' || message.role === 'client');
+        const isOperator = !isNote && !isClient && (Boolean(message.operator) || message.role === 'operator');
+        const isMe = !isNote && !isClient && !isOperator;
         const bubbleClass = isNote ? 'private-note' : (isOperator ? 'operator' : (isMe ? 'me' : 'client'));
         
         const enhancedContent = this.processMessageContent(message.content);
@@ -238,49 +288,92 @@ class ChatPro {
         const div = document.createElement('div');
         div.className = `chat-bubble ${bubbleClass}`;
         
-        let operatorTag = '';
+        let senderTag = '';
         if (isNote) {
-            operatorTag = `<span class="operator-tag" style="background:#fbbf24; color:#000; padding:2px 6px; border-radius:4px; font-size:0.75rem; font-weight:600; display:inline-block; margin-bottom:4px; user-select:none;">📌 Nota Privada (${message.operator || 'Admin'})</span>`;
+            senderTag = `<span class="sender-tag-badge" style="background:#fbbf24; color:#000;">📌 Nota Privada (${window.escapeHtml(message.operator || 'Admin')})</span>`;
         } else if (isOperator) {
-            operatorTag = '<span class="operator-tag" style="margin-right:4px;">👤 Operador</span>';
+            senderTag = `<span class="sender-tag-badge operator">👤 ${window.escapeHtml(message.operator || 'Operador')}</span>`;
+        } else if (isMe) {
+            senderTag = `<span class="sender-tag-badge ai">🤖 Asistente IA</span>`;
         }
         
         div.innerHTML = `
-            <div class="bubble-text">
-                ${operatorTag ? `<div>${operatorTag}</div>` : ''}
-                ${enhancedContent}
-            </div>
+            ${senderTag ? `<div>${senderTag}</div>` : ''}
+            <div class="bubble-text" data-processed="1">${enhancedContent}</div>
             <div class="bubble-meta">
                 <span class="bubble-time">${message.timestamp ? new Date(message.timestamp).toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit' }) : new Date().toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit' })}</span>
             </div>
         `;
         
         container.appendChild(div);
+        container.scrollTop = container.scrollHeight;
     }
 
     processMessageContent(content) {
-        let safeContent = window.escapeHtml(content);
+        if (!content) return '';
+        let raw = content;
+        let eventCardHtml = '';
+
+        // 1. Detección y renderizado elegante de bloques JSON (Citas y Pedidos)
+        const jsonMatch = raw.match(/(?:```json\s*|```\s*)?(\{[\s\S]*?"(?:cita_completa|pedido_completo)"[\s\S]*?\})(?:\s*```)?/i);
+        if (jsonMatch) {
+            try {
+                const parsed = JSON.parse(jsonMatch[1]);
+                raw = raw.replace(jsonMatch[0], '').trim();
+
+                if (parsed.cita_completa) {
+                    eventCardHtml = `
+                        <div class="chat-event-card">
+                            <div class="chat-event-card-header">
+                                <span>📅</span> Cita Médica / Servicio Confirmado
+                            </div>
+                            <div class="chat-event-card-grid">
+                                ${parsed.servicio ? `<div class="chat-event-row"><span class="chat-event-label">Servicio:</span><span class="chat-event-value">${window.escapeHtml(parsed.servicio)}</span></div>` : ''}
+                                ${parsed.doctor ? `<div class="chat-event-row"><span class="chat-event-label">Especialista:</span><span class="chat-event-value">${window.escapeHtml(parsed.doctor)}</span></div>` : ''}
+                                ${parsed.fecha ? `<div class="chat-event-row"><span class="chat-event-label">Fecha y Hora:</span><span class="chat-event-value">${window.escapeHtml(parsed.fecha)} ${parsed.hora || ''}</span></div>` : ''}
+                                ${parsed.precio ? `<div class="chat-event-row"><span class="chat-event-label">Precio:</span><span class="chat-event-value">$${window.escapeHtml(String(parsed.precio))}</span></div>` : ''}
+                            </div>
+                        </div>
+                    `;
+                } else if (parsed.pedido_completo) {
+                    eventCardHtml = `
+                        <div class="chat-event-card">
+                            <div class="chat-event-card-header">
+                                <span>🛍️</span> Pedido Confirmado
+                            </div>
+                            <div class="chat-event-card-grid">
+                                ${parsed.total ? `<div class="chat-event-row"><span class="chat-event-label">Total:</span><span class="chat-event-value">$${window.escapeHtml(String(parsed.total))}</span></div>` : ''}
+                                ${parsed.direccion ? `<div class="chat-event-row"><span class="chat-event-label">Entrega:</span><span class="chat-event-value">${window.escapeHtml(parsed.direccion)}</span></div>` : ''}
+                            </div>
+                        </div>
+                    `;
+                }
+            } catch (e) {
+                // Si el JSON falla al parsear se deja el texto intacto
+            }
+        }
+
+        let safeContent = window.escapeHtml(raw);
         
-        // Simple regex to detect URLs
-        const urlRegex = /(https?:\/\/[^\s]+)/g;
-        
-        return safeContent.replace(urlRegex, (url) => {
+        // 2. Detección de URLs de Multimedia
+        const urlRegex = /(https?:\/\/[^\s]+|\/uploads\/[^\s]+)/g;
+        safeContent = safeContent.replace(urlRegex, (url) => {
             const lowerUrl = url.toLowerCase();
             
-            // Image
-            if (lowerUrl.match(/\.(jpeg|jpg|gif|png|webp)$/)) {
-                return `<div class="chat-media-container"><img src="${url}" class="chat-media-img" onclick="window.ChatProInstance.openLightbox('${url}')" loading="lazy"></div>`;
+            // Imágenes
+            if (lowerUrl.match(/\.(jpeg|jpg|gif|png|webp)($|\?)/)) {
+                return `<div class="chat-media-container"><img src="${url}" class="chat-media-img" onclick="window.ChatProInstance && window.ChatProInstance.openLightbox('${url}')" loading="lazy"></div>`;
             }
-            // Audio
-            else if (lowerUrl.match(/\.(mp3|wav|ogg|aac)$/)) {
-                return `<div class="chat-media-container"><audio src="${url}" controls class="chat-media-audio"></audio></div>`;
+            // Audios / Notas de voz (Estilo Chatwoot)
+            else if (lowerUrl.match(/\.(mp3|wav|ogg|aac|m4a)($|\?)/) || lowerUrl.includes('/audio')) {
+                return this.renderAudioPlayerHtml(url);
             }
-            // Video
-            else if (lowerUrl.match(/\.(mp4|webm|mov)$/)) {
+            // Videos
+            else if (lowerUrl.match(/\.(mp4|webm|mov)($|\?)/)) {
                 return `<div class="chat-media-container"><video src="${url}" controls class="chat-media-video"></video></div>`;
             }
             // PDF
-            else if (lowerUrl.match(/\.pdf$/)) {
+            else if (lowerUrl.match(/\.pdf($|\?)/)) {
                 return `
                     <a href="${url}" target="_blank" class="chat-media-link">
                         <div class="chat-media-icon">📄</div>
@@ -289,9 +382,106 @@ class ChatPro {
                     </a>`;
             }
             
-            // Standard Link
-            return `<a href="${url}" target="_blank" style="color:var(--chat-accent); text-decoration:underline;">${url}</a>`;
+            // Enlace general
+            return `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color:var(--chat-accent); text-decoration:underline;">${url}</a>`;
         });
+
+        return (eventCardHtml ? eventCardHtml : '') + safeContent;
+    }
+
+    renderAudioPlayerHtml(url) {
+        return `
+            <div class="chatwoot-audio-player" data-src="${url}">
+                <button type="button" class="cw-audio-play-btn" onclick="window.ChatProInstance && window.ChatProInstance.toggleAudioPlay(this)" title="Reproducir audio">
+                    <svg class="icon-play" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                    <svg class="icon-pause" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="display:none;"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                </button>
+                <span class="cw-audio-time">00:00</span>
+                <div class="cw-audio-track" onclick="window.ChatProInstance && window.ChatProInstance.seekAudio(event, this)">
+                    <div class="cw-audio-progress"></div>
+                </div>
+                <button type="button" class="cw-audio-speed" onclick="window.ChatProInstance && window.ChatProInstance.cycleAudioSpeed(this)">1x</button>
+                <a href="${url}" download class="cw-audio-download" title="Descargar nota de voz">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                </a>
+                <audio src="${url}" preload="metadata" style="display:none;"></audio>
+            </div>
+        `;
+    }
+
+    toggleAudioPlay(btn) {
+        const player = btn.closest('.chatwoot-audio-player');
+        if (!player) return;
+        const audio = player.querySelector('audio');
+        if (!audio) return;
+        const iconPlay = btn.querySelector('.icon-play');
+        const iconPause = btn.querySelector('.icon-pause');
+        const timeSpan = player.querySelector('.cw-audio-time');
+        const progress = player.querySelector('.cw-audio-progress');
+
+        // Pausar otros audios activos
+        document.querySelectorAll('.chatwoot-audio-player audio').forEach(a => {
+            if (a !== audio && !a.paused) {
+                a.pause();
+                const otherBtn = a.closest('.chatwoot-audio-player')?.querySelector('.cw-audio-play-btn');
+                if (otherBtn) {
+                    otherBtn.querySelector('.icon-play').style.display = 'block';
+                    otherBtn.querySelector('.icon-pause').style.display = 'none';
+                }
+            }
+        });
+
+        if (audio.paused) {
+            audio.play().then(() => {
+                if (iconPlay) iconPlay.style.display = 'none';
+                if (iconPause) iconPause.style.display = 'block';
+            }).catch(err => console.error('Audio playback error:', err));
+        } else {
+            audio.pause();
+            if (iconPlay) iconPlay.style.display = 'block';
+            if (iconPause) iconPause.style.display = 'none';
+        }
+
+        if (!audio._listenersAttached) {
+            audio._listenersAttached = true;
+            audio.addEventListener('timeupdate', () => {
+                const current = audio.currentTime || 0;
+                const duration = audio.duration || 0;
+                const pct = duration > 0 ? (current / duration) * 100 : 0;
+                if (progress) progress.style.width = `${pct}%`;
+                
+                const curM = Math.floor(current / 60);
+                const curS = Math.floor(current % 60).toString().padStart(2, '0');
+                const durM = Math.floor(duration / 60) || 0;
+                const durS = Math.floor(duration % 60).toString().padStart(2, '0') || '00';
+                if (timeSpan) timeSpan.textContent = duration > 0 ? `${curM}:${curS} / ${durM}:${durS}` : `${curM}:${curS}`;
+            });
+            audio.addEventListener('ended', () => {
+                if (iconPlay) iconPlay.style.display = 'block';
+                if (iconPause) iconPause.style.display = 'none';
+                if (progress) progress.style.width = '0%';
+            });
+        }
+    }
+
+    seekAudio(event, track) {
+        const player = track.closest('.chatwoot-audio-player');
+        const audio = player?.querySelector('audio');
+        if (!audio || !audio.duration) return;
+        const rect = track.getBoundingClientRect();
+        const pos = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+        audio.currentTime = pos * audio.duration;
+    }
+
+    cycleAudioSpeed(btn) {
+        const player = btn.closest('.chatwoot-audio-player');
+        const audio = player?.querySelector('audio');
+        if (!audio) return;
+        const speeds = [1, 1.5, 2];
+        let currentIdx = speeds.indexOf(audio.playbackRate);
+        let nextIdx = (currentIdx + 1) % speeds.length;
+        audio.playbackRate = speeds[nextIdx];
+        btn.textContent = `${speeds[nextIdx]}x`;
     }
 
     openLightbox(url) {

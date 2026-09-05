@@ -1,5 +1,18 @@
 # Registro de Actualizaciones (Changelog)
 
+## v3.5.0 — Bandeja Estilo Chatwoot, Reproductor In-line y Resiliencia en Simulación
+- **Bandeja de Entrada Estilo Chatwoot:** Filtro de conversaciones por pestañas (*Todos*, *Mías*, *Sin asignar*) con contadores badge en vivo y foco automático en caja de texto.
+- **Reproductor de Audio Compacto In-line:** Nuevo reproductor para audios y notas de voz con control de velocidad (1x, 1.5x, 2x), barra interactiva de reproducción, descarga y tiempo transcurrido.
+- **Tags de Identificación Claros:** Nuevos badges visuales para remitentes en la conversación (📌 Nota Privada, 👤 Operador, 🤖 Asistente IA).
+- **Normalizador Inteligente de Multimedia:** Reconocimiento y transformación automática de URLs compartidas de Google Drive y Dropbox a enlaces directos para fichas de catálogo.
+- **Resiliencia Multimodal en Simulación:** Manejo seguro en `enviar_foto_producto` que renderiza las tarjetas de producto en el simulador sin requerir conexión activa de socket a WhatsApp.
+- **Despliegue (Docker):** Compilación y publicación multi-plataforma de la imagen `alfredobartaburu/urubot:v3.5` y `latest` para `linux/amd64`.
+
+## v3.4.0 — Catálogo Moderno, Modal de Ficha Técnica y Sincronización Google Sheets
+- **Tarjetas Modernas de Catálogo:** Rediseño con soporte de imágenes y fichas técnicas de productos y servicios.
+- **Sincronización con Google Sheets:** Mapeo automático de columnas, sincronización de imágenes, SKU y compatibilidad con Google Drive.
+- **Despliegue (Docker):** Compilación y publicación de la imagen `alfredobartaburu/urubot:v3.4`.
+
 ## v3.3.0 — Simulador Multimodal (Imágenes, Audio Avanzado y Modo Hostel)
 - **Soporte Completo de Imágenes en Simulador:** Subida de fotos vía botón 📎, Drag & Drop y pegado desde portapapeles (`Ctrl+V`), previsualización antes de enviar y análisis con modelos de visión (`visionService`).
 - **Renderizado de Fotos Despachadas por el Bot:** La herramienta `enviar_foto_producto` devuelve metadatos de las fotos de catálogo para mostrarlas como tarjetas interactivas de producto en el simulador.

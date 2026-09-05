@@ -3,6 +3,7 @@ node_modules/
 
 # Base de datos y sesiones
 data/*.db
+data/*.db-*
 auth_info_baileys/
 
 # Variables de entorno

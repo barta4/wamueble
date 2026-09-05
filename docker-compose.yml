@@ -23,7 +23,7 @@ services:
   # ─── Aplicación UruBot (Node.js) ──────────────────────
   app:
     build: .
-    image: alfredobartaburu/urubot:v3.4
+    image: alfredobartaburu/urubot:v3.5
     container_name: wapitzz-app
     restart: unless-stopped
     ports:

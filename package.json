@@ -1,13 +1,13 @@
 {
   "name": "wabot-saas",
-  "version": "3.4.0",
+  "version": "3.5.0",
   "description": "Sistema SaaS de Asistentes IA para Negocios — Pedidos por WhatsApp con IA, Multi-negocio, Multi-BD",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "setup": "node scripts/setup.js",
-    "test": "jest --verbose --forceExit"
+    "test": "jest --verbose --runInBand --forceExit"
   },
   "keywords": [
     "whatsapp",

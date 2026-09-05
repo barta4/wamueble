@@ -152,12 +152,12 @@ class GoogleSheetsService {
         let trimmed = url.trim();
         if (!trimmed) return null;
 
-        // Caso Google Drive: drive.google.com/file/d/{ID}/view o open?id={ID}
-        if (trimmed.includes('drive.google.com')) {
+        // Caso Google Drive: drive.google.com/file/d/{ID}/view, open?id={ID} o uc?export=view&id={ID}
+        if (trimmed.includes('drive.google.com') || trimmed.includes('docs.google.com')) {
             const fileMatch = trimmed.match(/\/file\/d\/([a-zA-Z0-9_-]+)/i) || trimmed.match(/[?&]id=([a-zA-Z0-9_-]+)/i);
             if (fileMatch) {
                 const fileId = fileMatch[1];
-                return `https://drive.google.com/uc?export=view&id=${fileId}`;
+                return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
             }
         }
 

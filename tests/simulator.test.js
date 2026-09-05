@@ -76,4 +76,44 @@ describe('Simulador Chat - Tests de Mejoras Multimodales y UI', () => {
         expect(result).toHaveProperty('images');
         expect(Array.isArray(result.images)).toBe(true);
     });
+
+    test('enviar_foto_producto en modo simulación registra imagen sin error ni llamadas a WhatsApp', async () => {
+        const { getLangChainService } = require('../src/services/langchain');
+        const { createModel } = require('../src/utils/aiModelFactory');
+        const Product = require('../src/models/Product');
+
+        // Insertar producto de prueba con imagen
+        const p = Product.create({
+            storeId: 1,
+            name: 'Pan de Molde Integral Test',
+            price: 180,
+            category: 'Panadería',
+            available: 1,
+            image_path: 'https://drive.google.com/file/d/test12345/view'
+        });
+
+        // Configurar mock de IA para disparar la tool 'enviar_foto_producto'
+        const mockModel = createModel();
+        mockModel.invoke
+            .mockResolvedValueOnce({
+                content: '',
+                tool_calls: [{
+                    id: 'call_123',
+                    name: 'enviar_foto_producto',
+                    args: { productName: 'Pan de Molde Integral Test' }
+                }]
+            })
+            .mockResolvedValueOnce({
+                content: '¡Aquí tienes la foto del Pan de Molde Integral Test! Es riquísimo.',
+                tool_calls: []
+            });
+
+        const service = getLangChainService();
+        const result = await service.processMessage('tenes pan y alguna foto', 1, '+59899000123', { isSimulation: true });
+
+        expect(result.images).toHaveLength(1);
+        expect(result.images[0].productName).toBe('Pan de Molde Integral Test');
+        expect(result.images[0].url).toContain('drive.google.com/thumbnail?id=test12345');
+        expect(result.response).toContain('Pan de Molde Integral Test');
+    });
 });

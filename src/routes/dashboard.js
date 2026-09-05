@@ -212,7 +212,7 @@ router.post('/api/simulate', requireAuth, async (req, res) => {
         }
 
         const langchain = require('../services/langchain').getLangChainService();
-        const result = await langchain.processMessage(messageText, storeId, phone);
+        const result = await langchain.processMessage(messageText, storeId, phone, { isSimulation: true });
         const elapsedMs = Date.now() - startTime;
         
         // A. Manejo de Pedidos (Comercio / Gastronomía)

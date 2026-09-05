@@ -623,10 +623,22 @@
                 <!-- Columna 2: Lista de Conversaciones -->
                 <div class="chat-sidebar">
                     <div class="chat-sidebar-header">
-                        <h3 style="margin:0 0 12px 0; font-size: 1.1rem;">Bandeja de entrada</h3>
+                        <h3 style="margin:0 0 10px 0; font-size: 1.1rem; font-weight: 700;">Bandeja de entrada</h3>
                         <div class="chat-search-box">
                             <span class="chat-search-icon">🔍</span>
                             <input type="text" id="chatSearchInput" class="chat-search-input" placeholder="Buscar conversación...">
+                        </div>
+                        <!-- Pestañas de Filtro Estilo Chatwoot (Mías, Sin asignar, Todos) -->
+                        <div class="chatwoot-tabs" id="chatwootFilterTabs">
+                            <button type="button" class="cw-tab-btn active" data-tab="all" onclick="window.ChatProInstance && window.ChatProInstance.setChatwootTab('all')">
+                                Todos <span class="cw-tab-badge" id="cwBadgeAll">0</span>
+                            </button>
+                            <button type="button" class="cw-tab-btn" data-tab="mine" onclick="window.ChatProInstance && window.ChatProInstance.setChatwootTab('mine')">
+                                Mías <span class="cw-tab-badge" id="cwBadgeMine">0</span>
+                            </button>
+                            <button type="button" class="cw-tab-btn" data-tab="unassigned" onclick="window.ChatProInstance && window.ChatProInstance.setChatwootTab('unassigned')">
+                                Sin asignar <span class="cw-tab-badge" id="cwBadgeUnassigned">0</span>
+                            </button>
                         </div>
                     </div>
                     <div class="chat-list" id="chatList">
